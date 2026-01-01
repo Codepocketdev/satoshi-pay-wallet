@@ -1,0 +1,23 @@
+{
+  "name": "Satoshi Pay - Cashu Wallet",
+  "short_name": "Satoshi Pay",
+  "description": "Offline Bitcoin payments via Cashu and Bluetooth",
+  "start_url": "/cashu-bluetooth-wallet/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#FF8C00",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/cashu-bluetooth-wallet/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/cashu-bluetooth-wallet/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
