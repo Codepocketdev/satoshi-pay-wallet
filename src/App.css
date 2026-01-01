@@ -11,41 +11,32 @@
   align-items: center;
   margin-bottom: 2em;
   padding: 1em 0;
-}
-
+}                                                                  
 .wallet-name {
   font-size: 1.3em;
   font-weight: 600;
   color: #FF8C00;
 }
-
-.settings-icon {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.5em 0.8em;
+                                                                   .settings-icon {
+  background: rgba(255, 255, 255, 0.1);                              padding: 0.5em 0.8em;
   font-size: 1.2em;
   border-radius: 8px;
 }
 
 header {
-  text-align: center;
-  margin-bottom: 2em;
-  position: relative;
-}
-
-header h1 {
+  text-align: center;                                                margin-bottom: 2em;
+  position: relative;                                              }
+                                                                   header h1 {
   font-size: 1.8em;
   margin-bottom: 0.3em;
   color: #FF8C00;
-}
-
+}                                                                  
 .back-btn {
-  position: absolute;
-  left: 0;
+  position: absolute;                                                left: 0;
   top: 50%;
   transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.1);
-  padding: 0.5em 1em;
-  font-size: 0.9em;
+  padding: 0.5em 1em;                                                font-size: 0.9em;
 }
 
 .balance-display {
@@ -54,8 +45,7 @@ header h1 {
   margin-bottom: 2em;
 }
 
-.balance-amount {
-  font-size: 4em;
+.balance-amount {                                                    font-size: 4em;
   font-weight: 300;
   color: #FF8C00;
   line-height: 1;
@@ -65,8 +55,7 @@ header h1 {
   font-size: 1.5em;
   opacity: 0.7;
   margin-top: 0.2em;
-}
-
+}                                                                  
 .mint-name {
   font-size: 0.9em;
   opacity: 0.5;
@@ -87,20 +76,16 @@ h3 {
   font-size: 1em;
 }
 
-.action-buttons-compact {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.8em;
-  margin: 1.5em 0;
-}
+.action-buttons-compact {                                            display: grid;
+  grid-template-columns: 1fr 1fr;                                    gap: 0.8em;
+  margin: 1.5em 0;                                                 }
 
 .receive-btn-compact,
 .send-btn-compact {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 1em;
+  justify-content: center;                                           padding: 1em;
   font-size: 0.95em;
   border-radius: 12px;
   gap: 0.4em;
@@ -128,43 +113,33 @@ h3 {
   font-weight: 300;
 }
 
-.btn-text-compact {
-  font-size: 1em;
-  font-weight: 500;
-}
+.btn-text-compact {                                                  font-size: 1em;
+  font-weight: 500;                                                }
 
 .primary-btn {
   background-color: #FF8C00 !important;
   width: 100%;
-  padding: 0.8em;
-  font-size: 1em;
+  padding: 0.8em;                                                    font-size: 1em;
   font-weight: 500;
 }
 
 .copy-btn {
-  background: rgba(255, 255, 255, 0.1);
-  width: 100%;
+  background: rgba(255, 255, 255, 0.1);                              width: 100%;
 }
-
-.cancel-btn {
+                                                                   .cancel-btn {
   background: rgba(255, 107, 107, 0.2);
   color: #ff6b6b;
 }
 
-.token-box {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1em;
-  border-radius: 8px;
+.token-box {                                                         background: rgba(0, 0, 0, 0.3);
+  padding: 1em;                                                      border-radius: 8px;
   margin-bottom: 1em;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
+  border: 1px solid rgba(255, 255, 255, 0.1);                      }
 
 .token-box textarea {
   background: transparent;
-  border: none;
-  resize: none;
-  width: 100%;
-}
+  border: none;                                                      resize: none;
+  width: 100%;                                                     }
 
 .card {
   padding: 1.5em;
@@ -189,38 +164,33 @@ h3 {
 }
 
 textarea {
-  resize: vertical;
-  min-height: 80px;
-  font-family: monospace;
-}
+  resize: vertical;                                                  min-height: 80px;
+  font-family: monospace;                                          }
 
 @media (max-width: 768px) {
   #root {
     padding: 1rem;
   }
-  
+
   .balance-amount {
     font-size: 3em;
   }
-  
+
   .wallet-name {
     font-size: 1.1em;
   }
 }
 
 .balance-card-small {
-  text-align: center;
-  padding: 1em;
+  text-align: center;                                                padding: 1em;
   margin-bottom: 1em;
 }
 
 .secondary-btn {
   background: rgba(255, 255, 255, 0.1) !important;
   width: 100%;
-  padding: 0.8em;
-  font-size: 1em;
-  font-weight: 500;
-}
+  padding: 0.8em;                                                    font-size: 1em;
+  font-weight: 500;                                                }
 
 .mint-item {
   display: flex;
@@ -228,13 +198,53 @@ textarea {
   align-items: center;
   padding: 1em;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  margin-bottom: 0.8em;
+  border-radius: 8px;                                                margin-bottom: 0.8em;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.balance-card-small {
-  text-align: center;
-  padding: 1em;
-  margin-bottom: 1em;
+/* QR Scanner styles - CLEAN VERSION */
+#qr-reader {
+  border: none !important;
+  width: 100% !important;
+}
+
+#qr-reader > div {
+  border: none !important;
+}
+
+#qr-reader video {
+  border-radius: 16px !important;
+  width: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Hide all default controls */
+#qr-reader__dashboard,
+#qr-reader__dashboard_section,
+#qr-reader__dashboard_section_csr,
+#qr-reader__dashboard_section_swaplink {
+  display: none !important;
+}
+
+/* Hide file selection */
+#qr-reader__dashboard_section_fsr {
+  display: none !important;
+}
+
+/* QR Box styling */
+#qr-reader__scan_region {
+  border: none !important;
+}
+
+#qr-reader img[alt="Info icon"] {
+  display: none !important;
+}
+
+/* The corner brackets */
+div[style*="border-top"][style*="border-left"],
+div[style*="border-top"][style*="border-right"],
+div[style*="border-bottom"][style*="border-left"],
+div[style*="border-bottom"][style*="border-right"] {
+  border-color: #FFD700 !important;
+  border-width: 3px !important;
 }
