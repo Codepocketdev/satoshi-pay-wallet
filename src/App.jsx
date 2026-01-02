@@ -49,16 +49,16 @@ function SplashScreen({ onComplete }) {
       justifyContent: 'center',
       zIndex: 10000
     }}>
-      <img 
-        src="/cashu-bluetooth-wallet/icon-192.png" 
-        alt="Logo" 
-        style={{ 
-          width: '120px', 
-          height: '120px', 
+      <img
+        src="/cashu-bluetooth-wallet/icon-192.png"
+        alt="Logo"
+        style={{
+          width: '120px',
+          height: '120px',
           marginBottom: '1em',
           borderRadius: '30px',
           animation: 'pulse 2s ease-in-out infinite'
-        }} 
+        }}
       />
       <h1 style={{
         fontSize: '2em',
@@ -77,7 +77,7 @@ function SplashScreen({ onComplete }) {
       }}>
         Bitcoin Ecash Wallet
       </p>
-      
+
       <div style={{
         width: '200px',
         height: '4px',
@@ -129,11 +129,11 @@ function InstallButton() {
 
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-    
+
     if (outcome === 'accepted') {
       setShowInstall(false)
     }
-    
+
     setDeferredPrompt(null)
   }
 
@@ -181,12 +181,12 @@ function InstallButton() {
 }
 
 // Pending Tokens Component
-function PendingTokensView({ 
-  pendingTokens, 
-  onReclaim, 
-  onCopy, 
+function PendingTokensView({
+  pendingTokens,
+  onReclaim,
+  onCopy,
   onRemove,
-  onClose 
+  onClose
 }) {
   return (
     <div className="app">
@@ -611,7 +611,6 @@ function SendViaLightning({
       }
 
       const sendResult = await wallet.send(totalAmount, proofs)
-
       let proofsToKeep = []
       let proofsToSend = []
 
@@ -802,10 +801,10 @@ function App() {
   const [receiveMethod, setReceiveMethod] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [decodedInvoice, setDecodedInvoice] = useState(null)
-  
+
   const [showScanner, setShowScanner] = useState(false)
   const [scanMode, setScanMode] = useState(null)
-  
+
   // Pending tokens state
   const [pendingTokens, setPendingTokens] = useState([])
   const [showPendingTokens, setShowPendingTokens] = useState(false)
@@ -854,22 +853,22 @@ function App() {
 
       const decoded = getDecodedToken(pendingToken.token)
       const tokenMintUrl = decoded.token[0]?.mint
-      
+
       const targetMint = new CashuMint(tokenMintUrl)
       const targetWallet = new CashuWallet(targetMint)
-      
+
       const proofs = await targetWallet.receive(pendingToken.token)
-      
+
       if (proofs && proofs.length > 0) {
         const existingProofs = getProofsForMint(tokenMintUrl)
         const allProofs = [...existingProofs, ...proofs]
         saveProofsForMint(tokenMintUrl, allProofs)
         calculateAllBalances()
-        
+
         removePendingToken(pendingToken.id)
-        
+
         vibrate([200])
-        
+
         setSuccess(`✅ Reclaimed ${pendingToken.amount} sats!`)
         setTimeout(() => setSuccess(''), 2000)
       }
@@ -877,6 +876,39 @@ function App() {
       setError(`Could not reclaim: ${err.message}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 🔥 NEW: Check if pending tokens have been spent
+  const checkPendingTokensStatus = async () => {
+    if (pendingTokens.length === 0) return
+
+    for (const pending of pendingTokens) {
+      try {
+        const decoded = getDecodedToken(pending.token)
+        const tokenMintUrl = decoded.token[0]?.mint
+
+        if (!tokenMintUrl) continue
+
+        const targetMint = new CashuMint(tokenMintUrl)
+        const targetWallet = new CashuWallet(targetMint)
+
+        // Try to check if token is still valid
+        try {
+          await targetWallet.receive(pending.token)
+          // If we get here, token is still valid (not spent)
+        } catch (err) {
+          // If error contains "already spent" or "already claimed", remove from pending
+          if (err.message?.includes('already spent') ||
+              err.message?.includes('already claimed') ||
+              err.message?.includes('Token already spent')) {
+            console.log(`✓ Token ${pending.id} was spent, removing from pending`)
+            removePendingToken(pending.id)
+          }
+        }
+      } catch (err) {
+        console.error('Error checking pending token:', err)
+      }
     }
   }
 
@@ -978,12 +1010,19 @@ function App() {
     }
   }, [mintUrl])
 
+  // 🔥 UPDATED: Enhanced useEffect with pending token checker
   useEffect(() => {
     const checkOnMount = async () => {
       const hasPending = getPendingQuote()
       if (hasPending) {
         console.log('📋 Found pending quote on mount, checking...')
         await checkPendingQuotes()
+      }
+
+      // Also check pending tokens on mount
+      if (pendingTokens.length > 0) {
+        console.log('📋 Checking pending tokens status...')
+        await checkPendingTokensStatus()
       }
     }
 
@@ -994,10 +1033,15 @@ function App() {
       if (hasPending) {
         await checkPendingQuotes()
       }
-    }, 5000)
+
+      // Check pending tokens every 10 seconds
+      if (pendingTokens.length > 0) {
+        await checkPendingTokensStatus()
+      }
+    }, 10000) // Check every 10 seconds
 
     return () => clearInterval(interval)
-  }, [wallet, allMints])
+  }, [wallet, allMints, pendingTokens])
 
   const loadCustomMints = () => {
     try {
@@ -1370,6 +1414,13 @@ function App() {
 
       // Vibrate on successful receive
       vibrate([200])
+
+      // 🔥 NEW: Remove this token from pending since it's been successfully claimed
+      const matchingPending = pendingTokens.find(p => p.token === cleanToken)
+      if (matchingPending) {
+        console.log('✓ Removing claimed token from pending')
+        removePendingToken(matchingPending.id)
+      }
 
       setSuccess(`✅ Received ${receivedAmount} sats!`)
       setReceiveToken('')
@@ -1818,7 +1869,7 @@ function App() {
   return (
     <div className="app">
       <InstallButton />
-      
+
       <header className="main-header">
         <div className="wallet-name">⚡ {WALLET_NAME}</div>
         <button className="settings-icon" onClick={() => setShowMintSettings(true)}>
@@ -1903,10 +1954,10 @@ function App() {
       </div>
 
       {pendingTokens.length > 0 && (
-        <button 
-          className="history-btn" 
+        <button
+          className="history-btn"
           onClick={() => setShowPendingTokens(true)}
-          style={{ 
+          style={{
             background: 'rgba(255, 140, 0, 0.1)',
             borderColor: '#FF8C00'
           }}
