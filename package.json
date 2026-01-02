@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "homepage": "https://codepocketdev.github.io/cashu-bluetooth-wallet",
+  "homepage": "https://codepocketdev.github.io/satoshi-pay-wallet/"
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
