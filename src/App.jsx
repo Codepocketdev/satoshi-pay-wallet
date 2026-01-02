@@ -50,7 +50,7 @@ function SplashScreen({ onComplete }) {
       zIndex: 10000
     }}>
       <img
-        src="/cashu-bluetooth-wallet/icon-192.png"
+        src="/satoshi-pay-wallet/icon-192.png" 
         alt="Logo"
         style={{
           width: '120px',
