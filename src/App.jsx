@@ -1903,18 +1903,16 @@ function App() {
       </div>
 
       {pendingTokens.length > 0 && (
-        <div className="card" style={{ borderColor: '#FF8C00', background: 'rgba(255, 140, 0, 0.05)' }}>
-          <h3>⚠️ Pending Tokens</h3>
-          <p style={{ fontSize: '0.9em', marginBottom: '1em' }}>
-            You have {pendingTokens.length} unsent token{pendingTokens.length > 1 ? 's' : ''}
-          </p>
-          <button
-            className="secondary-btn"
-            onClick={() => setShowPendingTokens(true)}
-          >
-            📋 View Pending Tokens
-          </button>
-        </div>
+        <button 
+          className="history-btn" 
+          onClick={() => setShowPendingTokens(true)}
+          style={{ 
+            background: 'rgba(255, 140, 0, 0.1)',
+            borderColor: '#FF8C00'
+          }}
+        >
+          📋 Pending Tokens ({pendingTokens.length})
+        </button>
       )}
 
       <button className="history-btn" onClick={() => setShowHistoryPage(true)}>
