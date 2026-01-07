@@ -1,9 +1,13 @@
+import { FileText, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
+
 export default function HistoryPage({ transactions, totalBalance, onClose }) {
   return (
     <div className="app">
       <header>
         <button className="back-btn" onClick={onClose}>← Back</button>
-        <h1>📜 History</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <FileText size={24} /> History
+        </h1>
       </header>
 
       <div className="card balance-card-small">
@@ -22,7 +26,7 @@ export default function HistoryPage({ transactions, totalBalance, onClose }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
                   <span style={{ fontSize: '1.5em' }}>
-                    {tx.type === 'send' ? '📤' : '📥'}
+                    {tx.type === 'send' ? <ArrowUpRight size={16} color="#ff6b6b" /> : <ArrowDownLeft size={16} color="#51cf66" />}
                   </span>
                   <div>
                     <div style={{ fontWeight: 'bold', color: tx.type === 'send' ? '#ff6b6b' : '#51cf66' }}>

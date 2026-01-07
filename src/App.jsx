@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CashuMint, CashuWallet, getDecodedToken } from '@cashu/cashu-ts'
+import { Settings, Zap, FileText, Copy, ArrowDown, ArrowUp, Lightbulb, CheckCircle } from 'lucide-react'
 import './App.css'
 
 // Hooks
@@ -137,7 +138,7 @@ function App() {
 
           vibrate([200])
 
-          setSuccess(`🎉 Received ${pending.amount} sats!`)
+          setSuccess(`Received ${pending.amount} sats!`)
           setLightningInvoice('')
           setLightningInvoiceQR('')
           setCurrentQuote(null)
@@ -240,7 +241,7 @@ function App() {
       const qr = await generateQR(quote.request)
       setLightningInvoiceQR(qr)
 
-      setSuccess('✅ Invoice created! Checking for payment...')
+      setSuccess('Invoice created! Checking for payment...')
       setTimeout(() => setSuccess(''), 2000)
 
     } catch (err) {
@@ -263,7 +264,7 @@ function App() {
   const copyToClipboard = async (text, label) => {
     try {
       await navigator.clipboard.writeText(text)
-      setSuccess(`✓ ${label} copied!`)
+      setSuccess(`${label} copied!`)
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
       setError('Failed to copy')
@@ -462,7 +463,7 @@ function App() {
       <header className="main-header">
         <div className="wallet-name">⚡ {WALLET_NAME}</div>
         <button className="settings-icon" onClick={() => setShowMintSettings(true)}>
-          ⚙️
+          <Settings size={24} />
         </button>
       </header>
 
@@ -478,7 +479,9 @@ function App() {
       </div>
 
       <div className="card">
-        <h3>💰 Get Tokens</h3>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <Zap size={20} /> Get Tokens
+        </h3>
         <p style={{ fontSize: '0.9em', marginBottom: '1em' }}>
           Pay a Lightning invoice to mint tokens
         </p>
@@ -525,11 +528,11 @@ function App() {
               marginBottom: '0.5em',
               fontSize: '0.85em'
             }}>
-              💡 After paying, your funds will appear automatically within a few seconds
+              <Lightbulb size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> After paying, your funds will appear automatically within a few seconds
             </div>
 
             <button className="copy-btn" onClick={() => copyToClipboard(lightningInvoice, 'Invoice')} style={{ marginBottom: '0.5em' }}>
-              📋 Copy Invoice
+              <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Invoice
             </button>
             <button
               className="cancel-btn"
@@ -551,21 +554,21 @@ function App() {
             borderColor: '#FF8C00'
           }}
         >
-          📋 Pending Tokens ({pendingTokens.length})
+          <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Pending Tokens ({pendingTokens.length})
         </button>
       )}
 
       <button className="history-btn" onClick={() => setShowHistoryPage(true)}>
-        📜 Transaction History
+        <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Transaction History
       </button>
 
       <div className="action-buttons-compact">
         <button className="receive-btn-compact" onClick={() => setShowReceivePage(true)}>
-          <span className="btn-icon-compact">↓</span>
+          <ArrowDown size={24} className="btn-icon-compact" />
           <span className="btn-text-compact">Receive</span>
         </button>
         <button className="send-btn-compact" onClick={() => setShowSendPage(true)}>
-          <span className="btn-icon-compact">↑</span>
+          <ArrowUp size={24} className="btn-icon-compact" />
           <span className="btn-text-compact">Send</span>
         </button>
       </div>

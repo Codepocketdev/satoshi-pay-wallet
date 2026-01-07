@@ -138,7 +138,7 @@ export default function QRScanner({ onScan, onClose, mode }) {
         textAlign: 'center',
         fontWeight: '500'
       }}>
-        {mode === 'send' ? '📸 Scan Lightning invoice or Cashu token' : '📸 Scan Cashu token'}
+        {mode === 'send' ? 'Scan Lightning invoice or Cashu token' : 'Scan Cashu token'}
       </div>
 
       {error && (

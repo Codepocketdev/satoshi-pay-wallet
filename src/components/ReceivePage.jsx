@@ -80,7 +80,7 @@ export default function ReceivePage({
 
       vibrate([200])
 
-      setSuccess(`✅ Received ${receivedAmount} sats!`)
+      setSuccess(`Received ${receivedAmount} sats!`)
       setReceiveToken('')
 
       setTimeout(() => {
@@ -106,7 +106,9 @@ export default function ReceivePage({
           resetReceivePage()
           onClose()
         }}>← Back</button>
-        <h1>📥 Receive</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <ArrowDownToLine size={24} /> Receive
+        </h1>
       </header>
 
       <div className="card balance-card-small">
@@ -131,7 +133,7 @@ export default function ReceivePage({
           </button>
 
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setReceiveMethod('ecash')}>
-            💰 Paste Ecash Token
+            <FileDown size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Paste Ecash Token
           </button>
           <button className="secondary-btn" onClick={() => setReceiveMethod('lightning')}>
             ⚡ Receive via Lightning
@@ -139,7 +141,9 @@ export default function ReceivePage({
         </div>
       ) : receiveMethod === 'ecash' ? (
         <div className="card">
-          <h3>💰 Receive Ecash</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            <Wallet size={20} /> Receive Ecash
+          </h3>
           <p style={{ marginBottom: '1em' }}>
             Paste a Cashu token
           </p>

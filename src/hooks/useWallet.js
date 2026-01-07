@@ -166,7 +166,7 @@ export const useWallet = () => {
     await initWallet()
     calculateAllBalances()
 
-    setSuccess('✅ Wallet restored successfully!')
+    setSuccess('Wallet restored successfully!')
     setTimeout(() => setSuccess(''), 3000)
   }
 

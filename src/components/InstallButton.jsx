@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Download } from 'lucide-react'
 
 export default function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
@@ -58,7 +59,7 @@ export default function InstallButton() {
         animation: 'slideIn 0.5s ease-out'
       }}
     >
-      <span>📲</span>
+      <Download size={20} />
       <span>Install App</span>
       <style>{`
         @keyframes slideIn {

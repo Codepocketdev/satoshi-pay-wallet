@@ -26,7 +26,7 @@ describe('Storage with Quota Detection', () => {
     const result = saveProofsForMint('test-mint', proofs)
 
     expect(result.success).toBe(false)
-    expect(result.error).toBe('QUOTA_EXCEEDED')
+    expect(result.error).toBe('QuotaExceededError')
 
     Storage.prototype.setItem = originalSetItem
   })

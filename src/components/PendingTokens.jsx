@@ -1,9 +1,13 @@
+import { Copy, Trash2, FileText, Lightbulb } from 'lucide-react'
+
 export default function PendingTokens({ pendingTokens, onReclaim, onCopy, onRemove, onClose }) {
   return (
     <div className="app">
       <header>
         <button className="back-btn" onClick={onClose}>← Back</button>
-        <h1>📋 Pending Tokens</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <FileText size={24} /> Pending Tokens
+        </h1>
       </header>
 
       {pendingTokens.length === 0 ? (
@@ -41,7 +45,7 @@ export default function PendingTokens({ pendingTokens, onReclaim, onCopy, onRemo
               onClick={() => onCopy(pending.token)}
               style={{ marginBottom: '0.5em' }}
             >
-              📋 Copy Token
+              <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Token
             </button>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5em' }}>
@@ -55,12 +59,12 @@ export default function PendingTokens({ pendingTokens, onReclaim, onCopy, onRemo
                 className="cancel-btn"
                 onClick={() => onRemove(pending.id)}
               >
-                🗑️ Delete
+                <Trash2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Delete
               </button>
             </div>
 
             <p style={{ fontSize: '0.75em', opacity: 0.5, marginTop: '0.5em' }}>
-              💡 This token will auto-delete once claimed by recipient
+              <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> This token will auto-delete once claimed by recipient
             </p>
           </div>
         ))

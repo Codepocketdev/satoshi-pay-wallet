@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Lock, X, Check, Copy, AlertTriangle } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
 
 export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNewWallet }) {
@@ -36,7 +37,7 @@ export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNe
       vibrate([100, 50, 100])
       onConfirm()
     } else {
-      setVerifyError('❌ Words do not match! Please try again.')
+      setVerifyError('Words do not match! Please try again.')
       vibrate([200, 100, 200])
       setTimeout(() => setVerifyError(''), 3000)
     }
@@ -46,7 +47,9 @@ export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNe
     <div className="app">
       <header>
         {!isNewWallet && <button className="back-btn" onClick={onCancel}>← Back</button>}
-        <h1>🔐 {verifyMode ? 'Verify' : 'Backup'} Wallet</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <Lock size={24} /> {verifyMode ? 'Verify' : 'Backup'} Wallet
+        </h1>
       </header>
 
       {!verifyMode ? (
@@ -56,9 +59,9 @@ export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNe
             <p style={{ fontSize: '0.9em', lineHeight: '1.6', marginBottom: '1em' }}>
               This is your <strong>recovery phrase</strong>. Write it down on paper and keep it safe.
               <br/><br/>
-              ❌ <strong>Never share it with anyone</strong><br/>
-              ❌ <strong>Don't screenshot or save digitally</strong><br/>
-              ✅ <strong>Store it offline and securely</strong>
+              <X size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em', color: '#ff6b6b' }} /> <strong>Never share it with anyone</strong><br/>
+              <X size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em', color: '#ff6b6b' }} /> <strong>Don't screenshot or save digitally</strong><br/>
+              <Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em', color: '#51cf66' }} /> <strong>Store it offline and securely</strong>
             </p>
           </div>
 
@@ -102,7 +105,7 @@ export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNe
                 fontSize: '0.9em'
               }}
             >
-              📋 Copy to Clipboard (Use carefully!)
+              <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy to Clipboard (Use carefully!)
             </button>
           </div>
 

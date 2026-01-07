@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CheckCircle, Copy, Zap, Eye, EyeOff, Dices, Save, Sparkles, Lightbulb } from 'lucide-react'
 import { 
   generateNostrKeys, 
   isValidNsec, 
@@ -32,7 +33,7 @@ export default function NostrSettings({ onClose }) {
       const keys = generateNostrKeys()
       setNsec(keys.nsec)
       setNpub(keys.npub)
-      setSuccess('✅ New Nostr keys generated!')
+      setSuccess('New Nostr keys generated!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       setError('Failed to generate keys')
@@ -55,7 +56,7 @@ export default function NostrSettings({ onClose }) {
       localStorage.setItem('nostr_nsec', nsec)
       localStorage.setItem('nostr_npub', derivedNpub)
       setNpub(derivedNpub)
-      setSuccess('✅ Nostr keys saved!')
+      setSuccess('Nostr keys saved!')
       setError('')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -68,14 +69,14 @@ export default function NostrSettings({ onClose }) {
     localStorage.removeItem('nostr_npub')
     setNsec('')
     setNpub('')
-    setSuccess('✅ Disconnected from Nostr')
+    setSuccess('Disconnected from Nostr')
     setTimeout(() => setSuccess(''), 3000)
   }
 
   const copyToClipboard = async (text, label) => {
     try {
       await navigator.clipboard.writeText(text)
-      setSuccess(`✓ ${label} copied!`)
+      setSuccess(`${label} copied!`)
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
       setError('Failed to copy')
@@ -109,7 +110,7 @@ export default function NostrSettings({ onClose }) {
               marginBottom: '1em'
             }}>
               <div style={{ marginBottom: '0.5em', fontWeight: 'bold', color: '#51CF66' }}>
-                ✅ Connected
+                <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em', color: '#51cf66' }} /> Connected
               </div>
               <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: '0.5em' }}>
                 Your Nostr Public Key:
@@ -129,7 +130,7 @@ export default function NostrSettings({ onClose }) {
                 onClick={() => copyToClipboard(npub, 'Npub')}
                 style={{ marginTop: '0.5em' }}
               >
-                📋 Copy Npub
+                <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Npub
               </button>
             </div>
 
@@ -138,7 +139,7 @@ export default function NostrSettings({ onClose }) {
               onClick={handleDisconnect}
               style={{ marginBottom: '0.5em' }}
             >
-              🔌 Disconnect
+              <Zap size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Disconnect
             </button>
           </>
         ) : (
@@ -170,7 +171,7 @@ export default function NostrSettings({ onClose }) {
                     fontSize: '1.2em'
                   }}
                 >
-                  {showNsec ? '🙈' : '👁️'}
+                  {showNsec ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
               <p style={{ fontSize: '0.75em', opacity: 0.6, marginTop: '0.3em' }}>
@@ -183,7 +184,7 @@ export default function NostrSettings({ onClose }) {
               onClick={handleGenerateKeys}
               style={{ marginBottom: '0.5em' }}
             >
-              🎲 Generate New Keys
+              <Dices size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Generate New Keys
             </button>
 
             <button
@@ -191,7 +192,7 @@ export default function NostrSettings({ onClose }) {
               onClick={handleSaveKeys}
               disabled={!nsec.trim()}
             >
-              💾 Save & Connect
+              <Save size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Save & Connect
             </button>
 
             <div style={{
@@ -211,7 +212,9 @@ export default function NostrSettings({ onClose }) {
 
       {isConnected && (
         <div className="card">
-          <h3>✨ Features Available</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            <Sparkles size={20} /> Features Available
+          </h3>
           <div style={{ fontSize: '0.9em', opacity: 0.8 }}>
             <div style={{ marginBottom: '0.5em' }}>
               ✅ Send ecash via Nostr DMs
@@ -224,7 +227,7 @@ export default function NostrSettings({ onClose }) {
             </div>
           </div>
           <p style={{ fontSize: '0.75em', opacity: 0.6, marginTop: '1em' }}>
-            💡 Use the Send page to send tokens via Nostr!
+            <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Use the Send page to send tokens via Nostr!
           </p>
         </div>
       )}

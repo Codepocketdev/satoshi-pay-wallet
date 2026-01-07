@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getEncodedToken } from '@cashu/cashu-ts'
+import { Zap, Wallet, Copy, Send, CheckCircle, Search, Lightbulb, Mail, Repeat } from 'lucide-react'
 import { generateQR, vibrate } from '../utils/cashu.js'
 import {
   sendNostrToken,
@@ -159,7 +160,7 @@ function SendViaNostr({
 
       addTransaction('send', amount, `Sent to ${formatPubkey(recipientNpub)} via Nostr`, mintUrl)
 
-      setSuccess('✅ Token sent via Nostr DM!')
+      setSuccess('Token sent via Nostr DM!')
       vibrate([100, 50, 100])
 
       setTimeout(() => {
@@ -183,7 +184,7 @@ function SendViaNostr({
           borderRadius: '8px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '2em', marginBottom: '0.5em' }}>🔌</div>
+          <div style={{ fontSize: '2em', marginBottom: '0.5em' }}><Zap size={48} /></div>
           <p>Connect your Nostr identity first!</p>
           <p style={{ fontSize: '0.85em', opacity: 0.7, marginTop: '0.5em' }}>
             Go to Settings → Nostr Integration
@@ -238,7 +239,7 @@ function SendViaNostr({
             borderRadius: '6px',
             fontSize: '0.85em'
           }}>
-            ✓ {profileInfo.displayName || profileInfo.name || 'Profile found'}
+            <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> {profileInfo.displayName || profileInfo.name || 'Profile found'}
           </div>
         )}
       </div>
@@ -262,7 +263,7 @@ function SendViaNostr({
         disabled={sending || !sendAmount || !recipientNpub.trim() || currentMintBalance === 0}
         style={{ marginBottom: '0.5em' }}
       >
-        {sending ? 'Sending...' : '📤 Generate & Send via Nostr'}
+        <Send size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> {sending ? 'Sending...' : 'Generate & Send via Nostr'}
       </button>
 
       <button
@@ -318,14 +319,14 @@ function SendViaLightning({
           return
         }
 
-        setSuccess('🔍 Resolving Lightning Address...')
+        setSuccess('Resolving Lightning Address...')
 
         invoiceToPay = await getInvoiceFromLightningAddress(
           lightningInvoice.trim(),
           parseInt(lnAddressAmount)
         )
 
-        setSuccess('✅ Lightning Address resolved!')
+        setSuccess('Lightning Address resolved!')
         await new Promise(resolve => setTimeout(resolve, 500))
       }
 
@@ -419,7 +420,7 @@ function SendViaLightning({
 
       vibrate([100, 50, 100])
 
-      setSuccess(`✅ Sent ${decodedInvoice.amount} sats via Lightning!`)
+      setSuccess(`Sent ${decodedInvoice.amount} sats via Lightning!`)
 
       setTimeout(() => {
         resetSendPage()
@@ -539,7 +540,7 @@ function SendViaLightning({
               borderRadius: '8px',
               fontSize: '0.85em'
             }}>
-              📬 Paying to: <strong>{decodedInvoice.lnAddress}</strong>
+              <Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Paying to: <strong>{decodedInvoice.lnAddress}</strong>
             </div>
           )}
 
@@ -571,7 +572,7 @@ function SendViaLightning({
             fontSize: '0.75em',
             opacity: 0.8
           }}>
-            💡 Actual fee may be lower. Any difference will be returned as change.
+            <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Actual fee may be lower. Any difference will be returned as change.
           </div>
 
           <button
@@ -710,7 +711,7 @@ export default function SendPage({
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text)
-      setSuccess('✓ Token copied!')
+      setSuccess('Token copied!')
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
       setError('Failed to copy')
@@ -726,7 +727,7 @@ export default function SendPage({
   const handleMintSwitch = (newMintUrl) => {
     onMintSwitch(newMintUrl)
     setShowMintSelector(false)
-    setSuccess('✓ Mint switched!')
+    setSuccess('Mint switched!')
     setTimeout(() => setSuccess(''), 2000)
   }
 
@@ -739,7 +740,9 @@ export default function SendPage({
           resetSendPage()
           onClose()
         }}>← Back</button>
-        <h1>📤 Send</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <Send size={24} /> Send
+        </h1>
       </header>
 
       {/* Mint Selector Card */}
@@ -777,7 +780,7 @@ export default function SendPage({
                   fontWeight: 'bold'
                 }}
               >
-                {showMintSelector ? '✕ Close' : '⇄ Switch'}
+                <Repeat size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> {showMintSelector ? 'Close' : 'Switch'}
               </button>
             )}
           </div>
@@ -817,7 +820,9 @@ export default function SendPage({
                       <div style={{ fontWeight: 'bold', fontSize: '0.85em' }}>
                         {mint.name}
                         {mint.url === mintUrl && (
-                          <span style={{ color: '#51cf66', marginLeft: '0.5em' }}>✓</span>
+                          <span style={{ color: '#51cf66', marginLeft: '0.5em', display: 'inline-flex', alignItems: 'center' }}>
+                            <CheckCircle size={14} />
+                          </span>
                         )}
                       </div>
                       <div style={{ fontSize: '0.7em', opacity: 0.5, marginTop: '0.2em' }}>
@@ -855,7 +860,7 @@ export default function SendPage({
           </button>
 
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('ecash')}>
-            💰 Send Ecash Token
+            <Wallet size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Send Ecash Token
           </button>
 
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('lightning')}>
@@ -910,7 +915,9 @@ export default function SendPage({
         />
       ) : (
         <div className="card">
-          <h3>💰 Send Ecash</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            <Wallet size={20} /> Send Ecash
+          </h3>
           <p style={{ marginBottom: '1em' }}>
             Generate a token to send
           </p>
@@ -967,10 +974,10 @@ export default function SendPage({
                 />
               </div>
               <button className="copy-btn" onClick={() => copyToClipboard(generatedToken)}>
-                📋 Copy Token
+                <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Token
               </button>
               <p style={{ fontSize: '0.75em', opacity: 0.5, marginTop: '0.5em', textAlign: 'center' }}>
-                💡 Token will auto-clear once recipient claims it
+                <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Token will auto-clear once recipient claims it
               </p>
             </div>
           )}

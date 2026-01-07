@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { RotateCcw, FileText, Lightbulb } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
 
 export default function RestoreWallet({ onRestore, onCancel }) {
@@ -33,7 +34,9 @@ export default function RestoreWallet({ onRestore, onCancel }) {
     <div className="app">
       <header>
         <button className="back-btn" onClick={onCancel}>← Cancel</button>
-        <h1>🔄 Restore Wallet</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <RotateCcw size={24} /> Restore Wallet
+        </h1>
       </header>
 
       <div className="card">
@@ -96,7 +99,7 @@ export default function RestoreWallet({ onRestore, onCancel }) {
               cursor: 'pointer'
             }}
           >
-            📋 Paste
+            <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Paste
           </button>
         </div>
 
@@ -110,7 +113,9 @@ export default function RestoreWallet({ onRestore, onCancel }) {
       </div>
 
       <div className="card" style={{ borderColor: 'rgba(255, 215, 0, 0.3)' }}>
-        <h4 style={{ color: '#FFD700', fontSize: '0.95em' }}>💡 Tips:</h4>
+        <h4 style={{ color: '#FFD700', fontSize: '0.95em', display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <Lightbulb size={16} /> Tips:
+        </h4>
         <ul style={{ fontSize: '0.85em', lineHeight: '1.6', paddingLeft: '1.2em', opacity: 0.8 }}>
           <li>Must be exactly 12 words</li>
           <li>Separated by spaces</li>

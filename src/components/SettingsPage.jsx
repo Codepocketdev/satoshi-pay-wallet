@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Settings, Lock, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, FileText, RotateCcw } from 'lucide-react'
 import { DEFAULT_MINTS } from '../utils/cashu.js'
 import { generateWalletSeed } from '../utils/cashu.js'
 import NostrSettings from './NostrSettings.jsx'
@@ -50,7 +51,9 @@ export default function SettingsPage({
 
       {/* Backup & Restore Section */}
       <div className="card" style={{ borderColor: '#FFD700' }}>
-        <h3 style={{ color: '#FFD700' }}>🔐 Wallet Backup</h3>
+        <h3 style={{ color: '#FFD700', display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+          <Lock size={20} /> Wallet Backup
+        </h3>
         <p style={{ fontSize: '0.9em', marginBottom: '1em', opacity: 0.8 }}>
           Protect your wallet with a 12-word recovery phrase
         </p>
@@ -59,14 +62,14 @@ export default function SettingsPage({
           className="primary-btn"
           onClick={onShowSeedBackup}
         >
-          📝 View Recovery Phrase
+          <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> View Recovery Phrase
         </button>
 
         <button
           className="secondary-btn"
           onClick={onShowRestoreWallet}
         >
-          🔄 Restore from Backup
+          <RotateCcw size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Restore from Backup
         </button>
 
         <div style={{
@@ -77,7 +80,7 @@ export default function SettingsPage({
           fontSize: '0.85em',
           lineHeight: '1.5'
         }}>
-          💡 <strong>Tip:</strong> Write down your recovery phrase on paper and store it safely. Never share it with anyone!
+          <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> <strong>Tip:</strong> Write down your recovery phrase on paper and store it safely. Never share it with anyone!
         </div>
       </div>
 
@@ -124,7 +127,9 @@ export default function SettingsPage({
             </div>
             <div style={{ display: 'flex', gap: '0.5em', alignItems: 'center' }}>
               {mintUrl === mint.url ? (
-                <span style={{ color: '#51cf66', fontSize: '0.9em' }}>✓ Active</span>
+                <span style={{ color: '#51cf66', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '0.3em' }}>
+                  <CheckCircle size={14} /> Active
+                </span>
               ) : (
                 <button
                   className="secondary-btn"

@@ -45,7 +45,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
             vibrate([100, 50, 100])
             
             if (window.showSuccess) {
-              window.showSuccess(`✅ ${pending.amount} sats token was claimed!`)
+              window.showSuccess(`${pending.amount} sats token was claimed!`)
             }
           }
         } catch (err) {
@@ -106,7 +106,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
 
         vibrate([200])
 
-        setSuccess(`✅ Reclaimed ${pendingToken.amount} sats!`)
+        setSuccess(`Reclaimed ${pendingToken.amount} sats!`)
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
