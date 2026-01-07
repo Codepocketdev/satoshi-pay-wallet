@@ -395,6 +395,9 @@ function App() {
         calculateAllBalances={calculateAllBalances}
         addTransaction={addTransaction}
         addPendingToken={addPendingToken}
+        allMints={allMints}
+        balances={balances}
+        onMintSwitch={setMintUrl}
         error={error}
         success={success}
         setError={setError}
@@ -413,21 +416,26 @@ function App() {
     )
   }
 
-  // Render send page
-  if (showSendPage) {
+  // Render receive page
+  if (showReceivePage) {
     return (
-      <SendPage
+      <ReceivePage
         wallet={wallet}
         mintUrl={mintUrl}
-        currentMintBalance={currentMintBalance}
+        allMints={allMints}
+        bip39Seed={bip39Seed}
         getProofs={getProofs}
         saveProofs={saveProofs}
         calculateAllBalances={calculateAllBalances}
         addTransaction={addTransaction}
-        addPendingToken={addPendingToken}
-        allMints={allMints}
-        balances={balances}
-        onMintSwitch={setMintUrl}
+        mintAmount={mintAmount}
+        setMintAmount={setMintAmount}
+        lightningInvoice={lightningInvoice}
+        lightningInvoiceQR={lightningInvoiceQR}
+        currentQuote={currentQuote}
+        handleMint={handleMint}
+        handleCancelMint={handleCancelMint}
+        copyToClipboard={copyToClipboard}
         error={error}
         success={success}
         setError={setError}
@@ -435,7 +443,7 @@ function App() {
         loading={loading}
         setLoading={setLoading}
         onClose={() => {
-          setShowSendPage(false)
+          setShowReceivePage(false)
           calculateAllBalances()
         }}
         onScanRequest={(mode) => {

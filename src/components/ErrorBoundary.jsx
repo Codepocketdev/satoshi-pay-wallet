@@ -48,7 +48,7 @@ class ErrorBoundary extends Component {
             <p style={{ marginBottom: '2em', opacity: 0.8 }}>
               The app encountered an unexpected error. Try reloading, or reset your wallet data if the problem persists.
             </p>
-            
+
             {this.state.error && (
               <details style={{
                 marginBottom: '2em',
@@ -73,7 +73,7 @@ class ErrorBoundary extends Component {
             )}
 
             <div style={{ display: 'flex', gap: '1em', justifyContent: 'center' }}>
-              <button 
+              <button
                 onClick={this.handleReload}
                 style={{
                   padding: '0.8em 1.5em',
@@ -87,7 +87,7 @@ class ErrorBoundary extends Component {
               >
                 Reload App
               </button>
-              <button 
+              <button
                 onClick={this.handleReset}
                 style={{
                   padding: '0.8em 1.5em',

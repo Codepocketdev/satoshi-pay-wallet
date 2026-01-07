@@ -31,7 +31,7 @@ function checkLocalStorage() {
 }
 
 function checkCrypto() {
-  return typeof window !== 'undefined' && 
+  return typeof window !== 'undefined' &&
          window.crypto !== undefined
 }
 

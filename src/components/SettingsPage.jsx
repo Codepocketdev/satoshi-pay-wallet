@@ -84,7 +84,7 @@ export default function SettingsPage({
       {/* Nostr Integration Section */}
       <div className="card" style={{ borderColor: '#8B5CF6' }}>
         <h3 style={{ color: '#8B5CF6' }}>🟣 Advanced Features</h3>
-        
+
         <button
           className="settings-btn"
           onClick={() => setShowNostrSettings(true)}
@@ -193,4 +193,3 @@ export default function SettingsPage({
     </div>
   )
 }
-

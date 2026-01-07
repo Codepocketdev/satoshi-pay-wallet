@@ -15,7 +15,7 @@ export const saveProofsForMint = (mintUrl, proofs, masterKey = null) => {
   try {
     const validProofs = proofs.filter(p => p && p.amount && typeof p.amount === 'number')
     const key = `cashu_proofs_${btoa(mintUrl)}`
-    
+
     if (masterKey) {
       const encrypted = encryptProofs(validProofs, masterKey)
       localStorage.setItem(key, encrypted)
@@ -36,7 +36,7 @@ export const getProofsForMint = (mintUrl, masterKey = null) => {
   try {
     const key = `cashu_proofs_${btoa(mintUrl)}`
     const saved = localStorage.getItem(key)
-    
+
     if (!saved || saved === 'undefined' || saved === 'null') {
       return []
     }
@@ -93,7 +93,7 @@ export const addTransaction = (transactions, type, amount, note, mintUrl, status
 }
 
 export const updateTransactionStatus = (transactions, txId, newStatus) => {
-  const updated = transactions.map(tx => 
+  const updated = transactions.map(tx =>
     tx.id === txId ? { ...tx, status: newStatus } : tx
   )
   saveTransactions(updated)

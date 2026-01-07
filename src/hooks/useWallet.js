@@ -24,21 +24,21 @@ export const useWallet = () => {
   const [customMints, setCustomMints] = useState([])
   const [allMints, setAllMints] = useState(DEFAULT_MINTS)
   const [mintInfo, setMintInfo] = useState(null)
-  
+
   // Balance
   const [balances, setBalances] = useState({})
   const [totalBalance, setTotalBalance] = useState(0)
-  
+
   // Transactions
   const [transactions, setTransactions] = useState([])
-  
+
   // Seed & Encryption
   const [seedPhrase, setSeedPhrase] = useState('')
   const [masterKey, setMasterKey] = useState('')
   const [bip39Seed, setBip39Seed] = useState(null)
   const [isNewWallet, setIsNewWallet] = useState(false)
   const [showSeedBackup, setShowSeedBackup] = useState(false)
-  
+
   // UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +51,7 @@ export const useWallet = () => {
   useEffect(() => {
     const initializeWallet = async () => {
       const existingSeed = localStorage.getItem('wallet_seed')
-      
+
       if (existingSeed) {
         const seed = deriveMasterKey(existingSeed)
         const encKey = deriveEncryptionKey(existingSeed)
@@ -87,11 +87,11 @@ export const useWallet = () => {
     }
 
     isInitializing.current = true
-    
+
     try {
       setLoading(true)
       setError('')
-      
+
       const mint = new CashuMint(mintUrl)
       const newWallet = new CashuWallet(mint, { bip39seed: bip39Seed })
 
@@ -156,16 +156,16 @@ export const useWallet = () => {
     localStorage.setItem('wallet_seed', restoredSeed)
     localStorage.setItem('wallet_backed_up', 'true')
     setSeedPhrase(restoredSeed)
-    
+
     const seed = deriveMasterKey(restoredSeed)
     const encKey = deriveEncryptionKey(restoredSeed)
     setBip39Seed(seed)
     setMasterKey(encKey)
-    
+
     loadCustomMintsData()
     await initWallet()
     calculateAllBalances()
-    
+
     setSuccess('✅ Wallet restored successfully!')
     setTimeout(() => setSuccess(''), 3000)
   }
@@ -187,7 +187,7 @@ export const useWallet = () => {
     saveCustomMints(updated)
     setCustomMints(updated)
     setAllMints([...DEFAULT_MINTS, ...updated])
-    
+
     setSuccess('Mint added!')
     setTimeout(() => setSuccess(''), 2000)
     return true

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { getEncodedToken } from '@cashu/cashu-ts'
 import { generateQR, vibrate } from '../utils/cashu.js'
-import { 
-  sendNostrToken, 
-  isValidNpub, 
+import {
+  sendNostrToken,
+  isValidNpub,
   formatPubkey,
-  getNostrProfile 
+  getNostrProfile
 } from '../utils/nostr.js'
 
 // Lightning Address utilities
@@ -189,8 +189,8 @@ function SendViaNostr({
             Go to Settings → Nostr Integration
           </p>
         </div>
-        <button 
-          className="back-btn" 
+        <button
+          className="back-btn"
           style={{ marginTop: '1em', position: 'relative', left: 0, transform: 'none' }}
           onClick={resetSendPage}
         >
@@ -265,8 +265,8 @@ function SendViaNostr({
         {sending ? 'Sending...' : '📤 Generate & Send via Nostr'}
       </button>
 
-      <button 
-        className="back-btn" 
+      <button
+        className="back-btn"
         style={{ marginTop: '0.5em', position: 'relative', left: 0, transform: 'none' }}
         onClick={resetSendPage}
       >
@@ -491,7 +491,7 @@ function SendViaLightning({
                   placeholder="Amount in sats"
                   value={lnAddressAmount}
                   onChange={(e) => setLnAddressAmount(e.target.value)}
-                  style={{ 
+                  style={{
                     marginBottom: 0,
                     paddingRight: '70px'
                   }}
@@ -744,14 +744,14 @@ export default function SendPage({
 
       {/* Mint Selector Card */}
       {allMints && allMints.length > 0 && (
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '0.8em',
           background: 'rgba(255, 140, 0, 0.05)',
           borderColor: 'rgba(255, 140, 0, 0.3)'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: showMintSelector ? '0.8em' : 0
           }}>
@@ -783,7 +783,7 @@ export default function SendPage({
           </div>
 
           {showMintSelector && allMints.length > 1 && (
-            <div style={{ 
+            <div style={{
               borderTop: '1px solid rgba(255, 140, 0, 0.2)',
               paddingTop: '0.8em'
             }}>
@@ -791,25 +791,25 @@ export default function SendPage({
                 Select mint to send from:
               </div>
               {allMints.map(mint => (
-                <div 
+                <div
                   key={mint.url}
                   onClick={() => handleMintSwitch(mint.url)}
                   style={{
                     padding: '0.6em',
                     marginBottom: '0.4em',
-                    background: mint.url === mintUrl 
-                      ? 'rgba(81, 207, 102, 0.1)' 
+                    background: mint.url === mintUrl
+                      ? 'rgba(81, 207, 102, 0.1)'
                       : 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    border: mint.url === mintUrl 
-                      ? '1px solid rgba(81, 207, 102, 0.3)' 
+                    border: mint.url === mintUrl
+                      ? '1px solid rgba(81, 207, 102, 0.3)'
                       : '1px solid rgba(255, 255, 255, 0.1)',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
@@ -857,13 +857,13 @@ export default function SendPage({
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('ecash')}>
             💰 Send Ecash Token
           </button>
-          
+
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('lightning')}>
             ⚡ Send via Lightning
           </button>
-          
-          <button 
-            className="primary-btn" 
+
+          <button
+            className="primary-btn"
             onClick={() => setSendMethod('nostr')}
             style={{
               background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
@@ -920,7 +920,7 @@ export default function SendPage({
               placeholder="Amount in sats"
               value={sendAmount}
               onChange={(e) => setSendAmount(e.target.value)}
-              style={{ 
+              style={{
                 marginBottom: 0,
                 paddingRight: '70px'
               }}
@@ -983,4 +983,3 @@ export default function SendPage({
     </div>
   )
 }
-

@@ -38,7 +38,7 @@ describe('Browser Compatibility', () => {
     it('returns storage info', () => {
       localStorage.setItem('test', 'data')
       const info = getStorageInfo()
-      
+
       expect(info).toBeDefined()
       expect(info.itemCount).toBeGreaterThan(0)
       expect(info.estimatedSize).toBeGreaterThan(0)

@@ -15,7 +15,7 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    
+
     <!-- Service Worker Registration with Update Handling -->
     <script>
       if ('serviceWorker' in navigator) {
@@ -23,12 +23,12 @@
           navigator.serviceWorker.register('/satoshi-pay-wallet/sw.js')
             .then(registration => {
               console.log('✅ Service Worker registered:', registration)
-              
+
               // Check for updates every 60 seconds
               setInterval(() => {
                 registration.update()
               }, 60000)
-              
+
               // Detect when new SW is waiting
               registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing
