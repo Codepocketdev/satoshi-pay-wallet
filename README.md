@@ -271,7 +271,7 @@ If you find this project useful:
 
 - ⭐ Star this repository
 - 🐦 Share on social media
-- ⚡ Send sats to support development (address coming soon)
+- ⚡ Send sats to support development (hodlcurator@blink.sv)
 - 🤝 Contribute code or documentation
 
 ---
