@@ -1,5 +1,0 @@
-[33m18852b0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: Trigger Vercel deployment on main branch
-[33m3062df6[m Add QR scanner for send/receive, refactor components, fix token detection
-[33ma7f2a74[m docs: Add comprehensive README with features, setup, and contributing guide
-[33m8445315[m docs: Add comprehensive README with features, setup, and contributing guide
-[33m31c86ff[m fix: Logo path for Vercel deployment
