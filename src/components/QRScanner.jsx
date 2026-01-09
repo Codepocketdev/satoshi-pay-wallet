@@ -1,46 +1,56 @@
 import { useRef, useState, useEffect } from 'react'
+import QrScanner from 'qr-scanner'
 
 export default function QRScanner({ onScan, onClose, mode }) {
   const videoRef = useRef(null)
-  const canvasRef = useRef(null)
+  const scannerRef = useRef(null)
   const [error, setError] = useState('')
   const [scanning, setScanning] = useState(false)
-  const animationFrameRef = useRef(null)
-  const streamRef = useRef(null)
+  const [cameras, setCameras] = useState([])
+  const [facingMode, setFacingMode] = useState('environment')
 
   useEffect(() => {
     let isActive = true
 
-    const startCamera = async () => {
+    const initScanner = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        })
-
-        if (!isActive) {
-          stream.getTracks().forEach(track => track.stop())
+        // Check if camera is available
+        const hasCamera = await QrScanner.hasCamera()
+        if (!hasCamera) {
+          setError('No camera found on this device.')
           return
         }
 
-        streamRef.current = stream
+        if (!videoRef.current || !isActive) return
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.setAttribute('playsinline', true)
-          videoRef.current.play()
-          setScanning(true)
-
-          videoRef.current.onloadedmetadata = () => {
-            scanQRCode()
+        // Create scanner instance
+        scannerRef.current = new QrScanner(
+          videoRef.current,
+          (result) => handleScanSuccess(result),
+          {
+            returnDetailedScanResult: true,
+            highlightScanRegion: false,
+            highlightCodeOutline: false,
           }
+        )
+
+        // Start scanning
+        await scannerRef.current.start()
+        setScanning(true)
+
+        // Get available cameras
+        const cameraList = await QrScanner.listCameras(true)
+        setCameras(cameraList)
+
+        // Set initial camera if multiple available
+        if (cameraList.length > 1) {
+          await scannerRef.current.setCamera(facingMode)
         }
 
       } catch (err) {
-        console.error('Camera error:', err)
+        console.error('Scanner error:', err)
+        if (!isActive) return
+
         if (err.name === 'NotAllowedError') {
           setError('Camera permission denied. Please allow camera access.')
         } else if (err.name === 'NotFoundError') {
@@ -53,70 +63,112 @@ export default function QRScanner({ onScan, onClose, mode }) {
       }
     }
 
-    const scanQRCode = async () => {
-      if (!isActive || !videoRef.current || !canvasRef.current) return
+    const handleScanSuccess = (result) => {
+      if (!isActive) return
 
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      const ctx = canvas.getContext('2d')
+      // Ensure we have valid data
+      if (!result || !result.data) return
 
-      const jsQR = (await import('jsqr')).default
-
-      const scan = () => {
-        if (!isActive || video.readyState !== video.HAVE_ENOUGH_DATA) {
-          animationFrameRef.current = requestAnimationFrame(scan)
-          return
+      const detectedToken = detectTokenType(result.data)
+      
+      // Only process relevant tokens based on mode
+      if (mode === 'send') {
+        // Accept lightning invoices, cashu tokens, lightning addresses
+        if (['lightning', 'cashu', 'lightning_address', 'cashu_request'].includes(detectedToken.type)) {
+          cleanup()
+          onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
         }
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert"
-        })
-
-        if (code) {
-          isActive = false
-          stopCamera()
-          onScan(code.data)
-          return
+      } else if (mode === 'receive') {
+        // Only accept cashu tokens
+        if (detectedToken.type === 'cashu') {
+          cleanup()
+          onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
         }
-
-        animationFrameRef.current = requestAnimationFrame(scan)
-      }
-
-      scan()
-    }
-
-    const stopCamera = () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+      } else {
+        // Default: accept anything
+        cleanup()
+        onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
       }
     }
 
-    startCamera()
+    const detectTokenType = (data) => {
+      const lowerData = data.toLowerCase()
+
+      // Lightning Invoice
+      if (lowerData.startsWith('lightning:') || lowerData.startsWith('lnbc')) {
+        const invoice = lowerData.startsWith('lightning:') 
+          ? data.split(':')[1] 
+          : data
+        return { type: 'lightning', data: invoice, raw: data }
+      }
+      
+      // Cashu Token
+      if (lowerData.startsWith('cashu')) {
+        let token = lowerData.startsWith('cashu:') 
+          ? data.split(':')[1] 
+          : data.substring(5) // Remove 'cashu' prefix
+        
+        if (token.startsWith('//')) {
+          token = token.slice(2)
+        }
+        
+        // Check if it's a Cashu Request
+        if (token.toLowerCase().startsWith('creq')) {
+          return { type: 'cashu_request', data: token, raw: data }
+        }
+        
+        return { type: 'cashu', data: token, raw: data }
+      }
+      
+      // Cashu Request (without cashu: prefix)
+      if (lowerData.startsWith('creq')) {
+        return { type: 'cashu_request', data, raw: data }
+      }
+      
+      // Lightning Address (user@domain.com)
+      if (data.includes('@') && data.includes('.') && !data.includes(' ')) {
+        return { type: 'lightning_address', data, raw: data }
+      }
+      
+      // Unknown/unsupported
+      return { type: 'unknown', data, raw: data }
+    }
+
+    const cleanup = () => {
+      isActive = false
+      if (scannerRef.current) {
+        scannerRef.current.stop()
+        scannerRef.current.destroy()
+        scannerRef.current = null
+      }
+    }
+
+    initScanner()
 
     return () => {
-      isActive = false
-      stopCamera()
+      cleanup()
     }
-  }, [onScan])
+  }, [onScan, mode, facingMode])
 
   const handleClose = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
+    if (scannerRef.current) {
+      scannerRef.current.stop()
+      scannerRef.current.destroy()
     }
     onClose()
+  }
+
+  const toggleCamera = async () => {
+    if (!scannerRef.current || cameras.length <= 1) return
+
+    const newFacingMode = facingMode === 'environment' ? 'user' : 'environment'
+    
+    try {
+      await scannerRef.current.setCamera(newFacingMode)
+      setFacingMode(newFacingMode)
+    } catch (err) {
+      console.error('Failed to switch camera:', err)
+    }
   }
 
   return (
@@ -173,72 +225,104 @@ export default function QRScanner({ onScan, onClose, mode }) {
             width: '100%',
             maxWidth: '500px',
             borderRadius: '16px',
-            display: error ? 'none' : 'block'
+            display: error ? 'none' : 'block',
+            objectFit: 'cover'
           }}
           playsInline
           muted
         />
 
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'none' }}
-        />
-
         {scanning && !error && (
-          <div style={{
-            position: 'absolute',
-            width: '250px',
-            height: '250px',
-            border: '3px solid #FFD700',
-            borderRadius: '16px',
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
-          }}>
+          <>
+            {/* Scan frame overlay */}
             <div style={{
               position: 'absolute',
-              top: '-3px',
-              left: '-3px',
-              width: '40px',
-              height: '40px',
-              borderTop: '5px solid #FFD700',
-              borderLeft: '5px solid #FFD700'
-            }}/>
-            <div style={{
-              position: 'absolute',
-              top: '-3px',
-              right: '-3px',
-              width: '40px',
-              height: '40px',
-              borderTop: '5px solid #FFD700',
-              borderRight: '5px solid #FFD700'
-            }}/>
-            <div style={{
-              position: 'absolute',
-              bottom: '-3px',
-              left: '-3px',
-              width: '40px',
-              height: '40px',
-              borderBottom: '5px solid #FFD700',
-              borderLeft: '5px solid #FFD700'
-            }}/>
-            <div style={{
-              position: 'absolute',
-              bottom: '-3px',
-              right: '-3px',
-              width: '40px',
-              height: '40px',
-              borderBottom: '5px solid #FFD700',
-              borderRight: '5px solid #FFD700'
-            }}/>
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              right: '0',
-              height: '3px',
-              background: 'linear-gradient(90deg, transparent, #FFD700, transparent)',
-              animation: 'scan 2s linear infinite'
-            }}/>
-          </div>
+              width: '250px',
+              height: '250px',
+              border: '3px solid #FFD700',
+              borderRadius: '16px',
+              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+              pointerEvents: 'none'
+            }}>
+              {/* Corner accents */}
+              <div style={{
+                position: 'absolute',
+                top: '-3px',
+                left: '-3px',
+                width: '40px',
+                height: '40px',
+                borderTop: '5px solid #FFD700',
+                borderLeft: '5px solid #FFD700'
+              }}/>
+              <div style={{
+                position: 'absolute',
+                top: '-3px',
+                right: '-3px',
+                width: '40px',
+                height: '40px',
+                borderTop: '5px solid #FFD700',
+                borderRight: '5px solid #FFD700'
+              }}/>
+              <div style={{
+                position: 'absolute',
+                bottom: '-3px',
+                left: '-3px',
+                width: '40px',
+                height: '40px',
+                borderBottom: '5px solid #FFD700',
+                borderLeft: '5px solid #FFD700'
+              }}/>
+              <div style={{
+                position: 'absolute',
+                bottom: '-3px',
+                right: '-3px',
+                width: '40px',
+                height: '40px',
+                borderBottom: '5px solid #FFD700',
+                borderRight: '5px solid #FFD700'
+              }}/>
+              {/* Scanning line animation */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                right: '0',
+                height: '3px',
+                background: 'linear-gradient(90deg, transparent, #FFD700, transparent)',
+                animation: 'scan 2s linear infinite'
+              }}/>
+            </div>
+
+            {/* Camera switch button */}
+            {cameras.length > 1 && (
+              <button
+                onClick={toggleCamera}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 215, 0, 0.9)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                  transition: 'transform 0.2s',
+                  zIndex: 10
+                }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                🔄
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -261,8 +345,11 @@ export default function QRScanner({ onScan, onClose, mode }) {
             color: 'white',
             fontSize: '1em',
             fontWeight: '600',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'background 0.2s'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
         >
           CLOSE
         </button>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CashuMint, CashuWallet, getDecodedToken } from '@cashu/cashu-ts'
 import { vibrate } from '../utils/cashu.js'
 import { ArrowDownToLine, Wallet, CheckCircle, FileDown } from 'lucide-react'
@@ -12,6 +12,7 @@ export default function ReceivePage({
   saveProofs,
   calculateAllBalances,
   addTransaction,
+  scannedData, // ADD: Receive scanned data
   error,
   success,
   setError,
@@ -23,6 +24,64 @@ export default function ReceivePage({
 }) {
   const [receiveMethod, setReceiveMethod] = useState(null)
   const [receiveToken, setReceiveToken] = useState('')
+
+  // NEW: Auto-populate from scanned data
+  useEffect(() => {
+    console.log('🔍 SCANNED DATA:', scannedData)
+    console.log('🔍 TYPE:', typeof scannedData)
+    console.log('🔍 LENGTH:', scannedData?.length)
+    
+    if (scannedData) {
+      const data = scannedData.trim()
+      const dataLower = data.toLowerCase()
+      
+      console.log('🔍 TRIMMED DATA:', data)
+      console.log('🔍 FIRST 20 CHARS:', data.substring(0, 20))
+      console.log('🔍 LOWERCASE FIRST 20:', dataLower.substring(0, 20))
+      
+      // Try to detect cashu token by decoding it
+      try {
+        console.log('🔄 Attempting to decode token...')
+        const decoded = getDecodedToken(data)
+        console.log('✅ DECODED SUCCESS:', decoded)
+        
+        if (decoded && decoded.token && decoded.token.length > 0) {
+          console.log('✅ Valid Cashu token detected!')
+          // It's a valid Cashu token!
+          setReceiveMethod('ecash')
+          setReceiveToken(data)
+          setSuccess('✓ Cashu token detected!')
+          
+          // Auto-receive after brief delay
+          setTimeout(() => {
+            handleReceiveEcash()
+          }, 500)
+          return
+        }
+      } catch (err) {
+        console.log('❌ DECODE ERROR:', err.message)
+        console.log('❌ FULL ERROR:', err)
+        // Not a cashu token, try other formats
+      }
+      
+      // Check if Lightning invoice
+      if (dataLower.startsWith('ln')) {
+        console.log('⚡ Lightning invoice detected')
+        setError('Cannot receive Lightning invoices directly. Use "Get Tokens" on main page.')
+        setTimeout(() => {
+          resetReceivePage()
+        }, 3000)
+        return
+      }
+      
+      // Unknown format
+      console.log('❌ Unknown format')
+      setError('Unknown QR code format. Please scan a Cashu token.')
+      setTimeout(() => {
+        setError('')
+      }, 3000)
+    }
+  }, [scannedData])
 
   const resetReceivePage = () => {
     setReceiveMethod(null)

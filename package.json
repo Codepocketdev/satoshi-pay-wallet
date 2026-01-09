@@ -24,6 +24,7 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^0.562.0",
     "nostr-tools": "^2.19.4",
+    "qr-scanner": "^1.4.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

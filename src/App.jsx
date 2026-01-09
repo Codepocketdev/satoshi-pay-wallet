@@ -86,6 +86,7 @@ function App() {
   // QR Scanner
   const [showScanner, setShowScanner] = useState(false)
   const [scanMode, setScanMode] = useState(null)
+  const [scannedData, setScannedData] = useState(null) // NEW: Store scanned data
 
   // Mint/Receive state
   const [mintAmount, setMintAmount] = useState('')
@@ -178,42 +179,57 @@ function App() {
     return () => clearInterval(interval)
   }, [wallet, allMints, bip39Seed, getProofs, saveProofs, calculateAllBalances, addTransaction])
 
-  // Handle QR scan
-  const handleScan = async (scannedData) => {
+  // Handle QR scan - UPDATED
+  const handleScan = async (data) => {
     setShowScanner(false)
 
     try {
-      const data = scannedData.trim()
-      const dataLower = data.toLowerCase()
-
-      if (dataLower.startsWith('cashu')) {
-        setShowReceivePage(true)
-        // Auto-receive will be handled by ReceivePage
+      // Add safety check
+      if (!data || typeof data !== 'string') {
+        setError('Invalid scan data')
+        setTimeout(() => setError(''), 4000)
         return
       }
 
+      const cleanData = data.trim()
+      const dataLower = cleanData.toLowerCase()
+
+      // Store the scanned data
+      setScannedData(cleanData)
+
+      // Check for Cashu token
+      if (dataLower.startsWith('cashu')) {
+        setShowReceivePage(true)
+        return
+      }
+
+      // Check for Lightning invoice
       if (dataLower.startsWith('lnbc') ||
           dataLower.startsWith('lntb') ||
           dataLower.startsWith('lnbcrt') ||
           dataLower.startsWith('ln')) {
         setShowSendPage(true)
-        // Auto-send will be handled by SendPage
         return
       }
 
+      // Check for Lightning with prefix
       if (dataLower.includes('lightning:')) {
-        const invoice = data.split('lightning:')[1]
         setShowSendPage(true)
         return
       }
 
+      // Check for Cashu with prefix
       if (dataLower.includes('cashu:')) {
-        const token = data.split('cashu:')[1]
         setShowReceivePage(true)
         return
       }
 
-      setError('Unknown QR code format. Please scan a Lightning invoice or Cashu token.')
+      // Check for Lightning Address
+      if (cleanData.includes('@') && cleanData.includes('.') && !cleanData.includes(' ')) {
+        setShowSendPage(true)
+        return
+      }
+
       setTimeout(() => setError(''), 4000)
 
     } catch (err) {
@@ -369,7 +385,6 @@ function App() {
         onRemoveMint={removeCustomMint}
         onResetMint={handleResetMint}
         onShowSeedBackup={() => {
-          // Ensure seed phrase is loaded from localStorage before showing backup
           const currentSeed = localStorage.getItem('wallet_seed')
           if (currentSeed && currentSeed !== seedPhrase) {
             setSeedPhrase(currentSeed)
@@ -384,7 +399,7 @@ function App() {
     )
   }
 
-  // Render send page
+  // Render send page - UPDATED
   if (showSendPage) {
     return (
       <SendPage
@@ -399,6 +414,7 @@ function App() {
         allMints={allMints}
         balances={balances}
         onMintSwitch={setMintUrl}
+        scannedData={scannedData}
         error={error}
         success={success}
         setError={setError}
@@ -407,6 +423,7 @@ function App() {
         setLoading={setLoading}
         onClose={() => {
           setShowSendPage(false)
+          setScannedData(null) // Clear scanned data
           calculateAllBalances()
         }}
         onScanRequest={(mode) => {
@@ -417,7 +434,7 @@ function App() {
     )
   }
 
-  // Render receive page
+  // Render receive page - UPDATED
   if (showReceivePage) {
     return (
       <ReceivePage
@@ -437,6 +454,7 @@ function App() {
         handleMint={handleMint}
         handleCancelMint={handleCancelMint}
         copyToClipboard={copyToClipboard}
+        scannedData={scannedData}
         error={error}
         success={success}
         setError={setError}
@@ -445,6 +463,7 @@ function App() {
         setLoading={setLoading}
         onClose={() => {
           setShowReceivePage(false)
+          setScannedData(null) // Clear scanned data
           calculateAllBalances()
         }}
         onScanRequest={(mode) => {

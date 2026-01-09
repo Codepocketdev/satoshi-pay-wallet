@@ -620,6 +620,7 @@ export default function SendPage({
   calculateAllBalances,
   addTransaction,
   addPendingToken,
+  scannedData, // NEW: Receive scanned data
   error,
   success,
   setError,
@@ -639,6 +640,25 @@ export default function SendPage({
   const [lightningInvoice, setLightningInvoice] = useState('')
   const [decodedInvoice, setDecodedInvoice] = useState(null)
   const [showMintSelector, setShowMintSelector] = useState(false)
+
+  // NEW: Auto-populate from scanned data
+  useEffect(() => {
+    if (scannedData) {
+      const dataLower = scannedData.toLowerCase()
+      
+      // Check if it's a lightning invoice or address
+      if (dataLower.startsWith('lnbc') || 
+          dataLower.startsWith('lntb') ||
+          dataLower.startsWith('lnbcrt') ||
+          dataLower.startsWith('ln') ||
+          (scannedData.includes('@') && scannedData.includes('.'))) {
+        
+        // Auto-select lightning method and populate invoice
+        setSendMethod('lightning')
+        setLightningInvoice(scannedData)
+      }
+    }
+  }, [scannedData])
 
   const resetSendPage = () => {
     setGeneratedToken('')
@@ -862,20 +882,20 @@ export default function SendPage({
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('ecash')}>
             <Wallet size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Send Ecash Token
           </button>
-
+          
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setSendMethod('lightning')}>
-            ⚡ Send via Lightning
+            <Zap size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Send via Lightning
           </button>
-
-          <button
-            className="primary-btn"
+          
+          <button 
+            className="primary-btn" 
             onClick={() => setSendMethod('nostr')}
             style={{
               background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
               borderColor: '#8B5CF6'
             }}
           >
-            🟣 Send via Nostr
+            <Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Send via Nostr
           </button>
         </div>
       ) : sendMethod === 'lightning' ? (
@@ -915,9 +935,7 @@ export default function SendPage({
         />
       ) : (
         <div className="card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
-            <Wallet size={20} /> Send Ecash
-          </h3>
+          <h3><Wallet size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Send Ecash</h3>
           <p style={{ marginBottom: '1em' }}>
             Generate a token to send
           </p>
@@ -927,10 +945,7 @@ export default function SendPage({
               placeholder="Amount in sats"
               value={sendAmount}
               onChange={(e) => setSendAmount(e.target.value)}
-              style={{
-                marginBottom: 0,
-                paddingRight: '70px'
-              }}
+              style={{ paddingRight: '70px' }}
             />
             <button
               onClick={handleSendMaxEcash}
@@ -977,7 +992,7 @@ export default function SendPage({
                 <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Token
               </button>
               <p style={{ fontSize: '0.75em', opacity: 0.5, marginTop: '0.5em', textAlign: 'center' }}>
-                <Lightbulb size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Token will auto-clear once recipient claims it
+                💡 Token will auto-clear once recipient claims it
               </p>
             </div>
           )}
