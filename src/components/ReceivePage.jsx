@@ -127,11 +127,11 @@ export default function ReceivePage({
         throw new Error('Token already claimed or invalid.')
       }
 
-      const existingProofs = getProofs(detectedMintUrl)
+      const existingProofs = await getProofs(detectedMintUrl)
       const allProofs = [...existingProofs, ...proofs]
 
       const validProofs = allProofs.filter(p => p && p.amount && typeof p.amount === 'number')
-      saveProofs(detectedMintUrl, validProofs)
+      await saveProofs(detectedMintUrl, validProofs)
 
       calculateAllBalances()
 

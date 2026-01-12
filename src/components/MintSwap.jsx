@@ -69,7 +69,7 @@ export default function MintSwap({
       }
 
       console.log('Step 3: Getting proofs from source mint')
-      const allProofs = getProofs(fromMint.url)
+      const allProofs = await getProofs(fromMint.url)
       console.log('Found', allProofs.length, 'proofs')
 
       let selectedProofs = []
@@ -113,7 +113,7 @@ export default function MintSwap({
       console.log('Minted', newProofs.length, 'new proofs!')
 
       console.log('Step 8: Saving proofs to destination mint')
-      const existingToProofs = getProofs(toMint.url)
+      const existingToProofs = await getProofs(toMint.url)
       saveProofs(toMint.url, [...existingToProofs, ...newProofs])
       console.log('Destination mint updated')
 

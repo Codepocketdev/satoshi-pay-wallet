@@ -123,7 +123,7 @@ function SendViaNostr({
       setError('')
 
       const amount = parseInt(sendAmount)
-      const proofs = getProofs(mintUrl)
+      const proofs = await getProofs(mintUrl)
 
       if (proofs.length === 0) {
         throw new Error('No tokens available. Mint some first!')
@@ -429,7 +429,7 @@ function SendViaLightning({
         throw new Error(`Insufficient balance. Need ${totalAmount} sats (including ${decodedInvoice.fee} sats fee)`)
       }
 
-      const proofs = getProofs(mintUrl)
+      const proofs = await getProofs(mintUrl)
 
       if (!proofs || proofs.length === 0) {
         throw new Error('No proofs available')
@@ -857,7 +857,7 @@ export default function SendPage({
       setLoading(true)
       setError('')
       const amount = parseInt(sendAmount)
-      const proofs = getProofs(mintUrl)
+      const proofs = await getProofs(mintUrl)
       const currentBalance = currentMintBalance
 
       if (proofs.length === 0) {

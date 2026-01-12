@@ -165,12 +165,12 @@ function App() {
 
   useEffect(() => {
     const checkPendingQuotes = async () => {
-      const pending = getPendingQuote()
+      const pending = await getPendingQuote()
       if (!pending) return
 
       const threeMinutes = 3 * 60 * 1000
       if (Date.now() - pending.timestamp > threeMinutes) {
-        clearPendingQuote()
+        await clearPendingQuote()
         setLightningInvoice('')
         setLightningInvoiceQR('')
         setCurrentQuote(null)
@@ -184,12 +184,12 @@ function App() {
         const { proofs } = await tempWallet.mintTokens(pending.amount, pending.quote)
 
         if (proofs && proofs.length > 0) {
-          const existingProofs = getProofs(pending.mintUrl)
+          const existingProofs = await getProofs(pending.mintUrl)
           const allProofs = [...existingProofs, ...proofs]
-          saveProofs(pending.mintUrl, allProofs)
-          calculateAllBalances()
-          addTransaction('receive', pending.amount, 'Minted via Lightning', pending.mintUrl)
-          clearPendingQuote()
+          await saveProofs(pending.mintUrl, allProofs)
+          await calculateAllBalances()
+          await addTransaction('receive', pending.amount, 'Minted via Lightning', pending.mintUrl)
+          await clearPendingQuote()
           vibrate([200])
           setSuccess(`Received ${pending.amount} sats!`)
           setLightningInvoice('')
@@ -209,13 +209,13 @@ function App() {
     }
 
     const checkOnMount = async () => {
-      const hasPending = getPendingQuote()
+      const hasPending = await getPendingQuote()
       if (hasPending) await checkPendingQuotes()
     }
 
     checkOnMount()
     const interval = setInterval(async () => {
-      const hasPending = getPendingQuote()
+      const hasPending = await getPendingQuote()
       if (hasPending) await checkPendingQuotes()
     }, 5000)
 
@@ -290,8 +290,8 @@ function App() {
     }
   }
 
-  const handleCancelMint = () => {
-    clearPendingQuote()
+  const handleCancelMint = async () => {
+    await clearPendingQuote()
     setLightningInvoice('')
     setLightningInvoiceQR('')
     setCurrentQuote(null)

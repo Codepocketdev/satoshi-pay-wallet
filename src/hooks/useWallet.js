@@ -14,7 +14,8 @@ import {
   addTransaction as addTx,
   updateTransactionStatus as updateTxStatus,
   loadCustomMints,
-  saveCustomMints
+  saveCustomMints,
+  migrateFromLocalStorage
 } from '../utils/storage.js'
 import {
   getBalanceSnapshot,
@@ -24,7 +25,6 @@ import {
 } from '../utils/balanceDB.js'
 
 export const useWallet = () => {
-  // Wallet state - FIXED: Persist selected mint
   const [wallet, setWallet] = useState(null)
   const [mintUrl, setMintUrl] = useState(() => {
     const saved = localStorage.getItem('selected_mint_url')
@@ -34,7 +34,6 @@ export const useWallet = () => {
   const [allMints, setAllMints] = useState(DEFAULT_MINTS)
   const [mintInfo, setMintInfo] = useState(null)
 
-  // Balance - Load snapshot instantly!
   const [balances, setBalances] = useState(() => {
     const snapshot = getBalanceSnapshot()
     return snapshot?.perMint || {}
@@ -44,34 +43,28 @@ export const useWallet = () => {
     return snapshot?.total || 0
   })
 
-  // Transactions
   const [transactions, setTransactions] = useState([])
-
-  // Seed & Encryption
   const [seedPhrase, setSeedPhrase] = useState('')
   const [masterKey, setMasterKey] = useState('')
   const [bip39Seed, setBip39Seed] = useState(null)
   const [isNewWallet, setIsNewWallet] = useState(false)
   const [showSeedBackup, setShowSeedBackup] = useState(false)
-
-  // UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  // Race condition prevention
   const isInitializing = useRef(false)
 
-  // FIXED: Save selected mint when it changes
   useEffect(() => {
     if (mintUrl) {
       localStorage.setItem('selected_mint_url', mintUrl)
     }
   }, [mintUrl])
 
-  // Initialize wallet
   useEffect(() => {
     const initializeWallet = async () => {
+      // 🔥 MIGRATE FROM LOCALSTORAGE FIRST
+      await migrateFromLocalStorage()
+
       const existingSeed = localStorage.getItem('wallet_seed')
 
       if (existingSeed) {
@@ -80,11 +73,9 @@ export const useWallet = () => {
         setBip39Seed(seed)
         setMasterKey(encKey)
         setSeedPhrase(existingSeed)
-        loadCustomMintsData()
+        await loadCustomMintsData()
         initWallet()
-        loadTxData()
-        // REMOVED: Don't auto-calculate balance - use cached balance indefinitely
-        // Only recalculates on user actions (send/receive/manual refresh)
+        await loadTxData()
       } else {
         const newSeed = generateWalletSeed()
         setSeedPhrase(newSeed)
@@ -102,9 +93,6 @@ export const useWallet = () => {
       initWallet()
     }
   }, [mintUrl, bip39Seed])
-
-  // REMOVED: Don't auto-calculate when masterKey is ready
-  // Balance stays from cache until user action triggers recalculation
 
   const initWallet = async () => {
     if (isInitializing.current) {
@@ -140,14 +128,14 @@ export const useWallet = () => {
     }
   }
 
-  const calculateAllBalances = () => {
+  const calculateAllBalances = async () => {
     try {
       const mintBalances = {}
       let total = 0
 
-      allMints.forEach(mint => {
+      for (const mint of allMints) {
         try {
-          const proofs = getProofsForMint(mint.url, masterKey)
+          const proofs = await getProofsForMint(mint.url, masterKey)
           const balance = proofs.reduce((sum, p) => sum + (p.amount || 0), 0)
           mintBalances[mint.url] = balance
           total += balance
@@ -155,12 +143,11 @@ export const useWallet = () => {
           console.error(`Error calculating balance for ${mint.name}:`, err)
           mintBalances[mint.url] = 0
         }
-      })
+      }
 
       setBalances(mintBalances)
       setTotalBalance(total)
 
-      // Save to balance DB
       saveBalanceSnapshot(total, mintBalances)
 
       console.log('✅ Balances calculated and saved:', total)
@@ -169,7 +156,7 @@ export const useWallet = () => {
     }
   }
 
-  const handleSeedBackupConfirm = () => {
+  const handleSeedBackupConfirm = async () => {
     localStorage.setItem('wallet_seed', seedPhrase)
     localStorage.setItem('wallet_backed_up', 'true')
     const seed = deriveMasterKey(seedPhrase)
@@ -178,11 +165,10 @@ export const useWallet = () => {
     setMasterKey(encKey)
     setShowSeedBackup(false)
     setIsNewWallet(false)
-    loadCustomMintsData()
+    await loadCustomMintsData()
     initWallet()
-    loadTxData()
-    // For new wallets, calculate immediately (no cached balance yet)
-    calculateAllBalances()
+    await loadTxData()
+    await calculateAllBalances()
   }
 
   const handleRestoreWallet = async (restoredSeed) => {
@@ -205,7 +191,7 @@ export const useWallet = () => {
       setBip39Seed(seed)
       setMasterKey(encKey)
 
-      loadCustomMintsData()
+      await loadCustomMintsData()
 
       const mint = new CashuMint(mintUrl)
       const newWallet = new CashuWallet(mint, { bip39seed: seed })
@@ -231,14 +217,10 @@ export const useWallet = () => {
 
               for (const keysetId of keysetIds) {
                 try {
-                  const keyset = await scanMint.getKeys(keysetId)
                   const restoredProofs = await scanWallet.restore(0, 5, { keysetId })
 
                   if (restoredProofs && restoredProofs.length > 0) {
-                    const key = `cashu_proofs_${btoa(mintToScan.url)}`
-                    const existing = JSON.parse(localStorage.getItem(key) || '[]')
-                    const combined = [...existing, ...restoredProofs]
-                    localStorage.setItem(key, JSON.stringify(combined))
+                    await saveProofsForMint(mintToScan.url, restoredProofs, encKey)
 
                     const amount = restoredProofs.reduce((sum, p) => sum + p.amount, 0)
                     totalRestored += amount
@@ -261,7 +243,7 @@ export const useWallet = () => {
         }
       }
 
-      calculateAllBalances()
+      await calculateAllBalances()
 
       console.log(`Wallet restoration complete. Restored ${totalRestored} sats total.`)
 
@@ -278,13 +260,13 @@ export const useWallet = () => {
     }
   }
 
-  const loadCustomMintsData = () => {
-    const custom = loadCustomMints()
+  const loadCustomMintsData = async () => {
+    const custom = await loadCustomMints()
     setCustomMints(custom)
     setAllMints([...DEFAULT_MINTS, ...custom])
   }
 
-  const addCustomMint = (name, url) => {
+  const addCustomMint = async (name, url) => {
     if (!name || !url) {
       setError('Please enter both name and URL')
       return false
@@ -292,7 +274,7 @@ export const useWallet = () => {
 
     const newMint = { name, url }
     const updated = [...customMints, newMint]
-    saveCustomMints(updated)
+    await saveCustomMints(updated)
     setCustomMints(updated)
     setAllMints([...DEFAULT_MINTS, ...updated])
 
@@ -301,46 +283,47 @@ export const useWallet = () => {
     return true
   }
 
-  const removeCustomMint = (url) => {
+  const removeCustomMint = async (url) => {
     const updated = customMints.filter(m => m.url !== url)
-    saveCustomMints(updated)
+    await saveCustomMints(updated)
     setCustomMints(updated)
     setAllMints([...DEFAULT_MINTS, ...updated])
     setSuccess('Mint removed!')
     setTimeout(() => setSuccess(''), 2000)
   }
 
-  const resetMint = (specificMint = null) => {
+  const resetMint = async (specificMint = null) => {
     const targetMint = specificMint || mintUrl
     const key = `cashu_proofs_${btoa(targetMint)}`
     localStorage.removeItem(key)
     markBalanceStale()
-    calculateAllBalances()
+    await calculateAllBalances()
   }
 
-  const loadTxData = () => {
-    const txs = loadTransactions()
+  const loadTxData = async () => {
+    const txs = await loadTransactions()
     setTransactions(txs)
   }
 
-  const addTransaction = (type, amount, note, mint, status = 'paid') => {
+  const addTransaction = async (type, amount, note, mint, status = 'paid') => {
     const { transactions: updated, txId } = addTx(transactions, type, amount, note, mint || mintUrl, status)
     setTransactions(updated)
+    await saveTransactions(updated)
     return txId
   }
 
-  const updateTransactionStatus = (txId, newStatus) => {
+  const updateTransactionStatus = async (txId, newStatus) => {
     const updated = updateTxStatus(transactions, txId, newStatus)
     setTransactions(updated)
+    await saveTransactions(updated)
   }
 
-  const getProofs = (url) => getProofsForMint(url, masterKey)
+  const getProofs = async (url) => await getProofsForMint(url, masterKey)
 
-  const saveProofs = (url, proofs) => {
-    saveProofsForMint(url, proofs, masterKey)
-    // Mark balance as stale, will recalculate immediately (user action)
+  const saveProofs = async (url, proofs) => {
+    await saveProofsForMint(url, proofs, masterKey)
     markBalanceStale()
-    calculateAllBalances()
+    await calculateAllBalances()
   }
 
   return {
@@ -379,3 +362,4 @@ export const useWallet = () => {
     setSuccess
   }
 }
+
