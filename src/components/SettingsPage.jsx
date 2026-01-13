@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Settings, Lock, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, FileText, RotateCcw, ArrowDownUp } from 'lucide-react'
+import { Settings, Lock, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, FileText, RotateCcw, ArrowDownUp, Key } from 'lucide-react'
 import { DEFAULT_MINTS } from '../utils/cashu.js'
 import { generateWalletSeed } from '../utils/cashu.js'
 import { loadSeedPhrase, saveSeedPhrase } from '../utils/storage.js'
 import { CURRENCIES, getSelectedCurrency, setSelectedCurrency } from '../utils/price.js'
 import NostrSettings from './NostrSettings.jsx'
+import P2PKSettings from './P2PKSettings.jsx'
 import MintSwap from './MintSwap.jsx'
 
 export default function SettingsPage({
@@ -40,6 +41,7 @@ export default function SettingsPage({
   const [newMintName, setNewMintName] = useState('')
   const [newMintUrl, setNewMintUrl] = useState('')
   const [showNostrSettings, setShowNostrSettings] = useState(false)
+  const [showP2PKSettings, setShowP2PKSettings] = useState(false)
   const [showSwap, setShowSwap] = useState(false)
   const [selectedCurr, setSelectedCurr] = useState(getSelectedCurrency())
 
@@ -105,6 +107,17 @@ export default function SettingsPage({
     setSelectedCurr(currency)
     setSuccess && setSuccess(`Currency changed to ${currency}`)
     setTimeout(() => setSuccess && setSuccess(''), 2000)
+  }
+
+  // P2PK Settings page
+  if (showP2PKSettings) {
+    return (
+      <P2PKSettings
+        onClose={() => setShowP2PKSettings(false)}
+        setSuccess={setSuccess}
+        setError={setError}
+      />
+    )
   }
 
   if (showNostrSettings) {
@@ -234,13 +247,34 @@ export default function SettingsPage({
             display: 'flex',
             alignItems: 'center',
             gap: '1em',
-            padding: '1em'
+            padding: '1em',
+            marginBottom: '0.5em'
           }}
         >
           <span style={{ fontSize: '1.5em' }}>🟣</span>
           <div style={{ textAlign: 'left', flex: 1 }}>
             <div style={{ fontWeight: 'bold' }}>Nostr Integration</div>
             <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Send/receive ecash via Nostr DMs</div>
+          </div>
+        </button>
+
+        <button
+          className="settings-btn"
+          onClick={() => setShowP2PKSettings(true)}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #A855F7 0%, #9333EA 100%)',
+            borderColor: '#A855F7',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1em',
+            padding: '1em'
+          }}
+        >
+          <Key size={24} />
+          <div style={{ textAlign: 'left', flex: 1 }}>
+            <div style={{ fontWeight: 'bold' }}>P2PK Keys</div>
+            <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Secure payments with locked ecash</div>
           </div>
         </button>
       </div>
