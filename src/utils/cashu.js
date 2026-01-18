@@ -3,7 +3,7 @@ import { wordlist } from '@scure/bip39/wordlists/english.js'
 import CryptoJS from 'crypto-js'
 
 export const DEFAULT_MINTS = [
-  { name: 'Minibits', url: 'https://mint.minibits.cash/Bitcoin' },
+  { name: 'Mint.btcforplebs', url: 'https://mint.btcforplebs.com' },
   { name: 'Kashu', url: 'https://kashu.me' }
 ]
 

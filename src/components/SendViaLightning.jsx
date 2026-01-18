@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { Zap, Send, Lightbulb, Mail } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
 
+// Counter management functions
+const getKeysetCounter = (mintUrl) => {
+  const key = `counter_${mintUrl}`
+  return parseInt(localStorage.getItem(key) || '0')
+}
+
+const incrementCounter = (mintUrl, amount) => {
+  const key = `counter_${mintUrl}`
+  const current = getKeysetCounter(mintUrl)
+  localStorage.setItem(key, (current + amount).toString())
+}
+
 function isLightningAddress(str) {
   if (!str || typeof str !== 'string') return false
   const parts = str.trim().split('@')
@@ -120,7 +132,7 @@ export default function SendViaLightning({
         amount: meltQuote.amount,
         fee: meltQuote.fee_reserve,
         total: meltQuote.amount + meltQuote.fee_reserve,
-        quote: meltQuote.quote,
+        quote: meltQuote,
         isLnAddress: isLnAddress,
         lnAddress: isLnAddress ? lightningInvoice.trim() : null
       })
@@ -137,6 +149,10 @@ export default function SendViaLightning({
 
   const handlePayInvoice = async () => {
     if (!wallet || !decodedInvoice) return
+
+    const counterValue = getKeysetCounter(mintUrl)
+    let counterIncreased = false
+    let proofsToSend = []
 
     try {
       setSendingPayment(true)
@@ -156,7 +172,6 @@ export default function SendViaLightning({
 
       const sendResult = await wallet.send(totalAmount, proofs)
       let proofsToKeep = []
-      let proofsToSend = []
 
       if (sendResult) {
         proofsToKeep = sendResult.keep || sendResult.returnChange || sendResult.change || []
@@ -167,29 +182,32 @@ export default function SendViaLightning({
         throw new Error('Failed to prepare proofs for payment')
       }
 
-      let meltResponse
-      try {
-        meltResponse = await wallet.meltTokens(decodedInvoice.quote, proofsToSend)
-      } catch (firstError) {
-        meltResponse = await wallet.meltTokens(
-          {
-            quote: decodedInvoice.quote,
-            amount: decodedInvoice.amount,
-            fee_reserve: decodedInvoice.fee
-          },
-          proofsToSend
-        )
-      }
+      const counterIncrease = proofsToSend.length + (decodedInvoice.fee > 0 ? Math.ceil(Math.log2(decodedInvoice.fee)) : 0)
+      incrementCounter(mintUrl, counterIncrease)
+      counterIncreased = true
 
-      if (meltResponse && meltResponse.isPaid === false) {
+      console.log('Melting with counter:', counterValue, 'increment:', counterIncrease)
+
+      const meltResponse = await wallet.meltProofs(
+        decodedInvoice.quote,
+        proofsToSend,
+        {
+          keysetId: wallet.keys.id,
+          counter: counterValue
+        }
+      )
+
+      console.log('Melt response:', meltResponse)
+
+      if (!meltResponse || !meltResponse.quote || meltResponse.quote.state !== 'PAID') {
         throw new Error('Invoice payment failed at the mint')
       }
 
-      const changeProofs = meltResponse?.change || []
+      const changeProofs = meltResponse.change || []
       const allRemainingProofs = [...proofsToKeep, ...changeProofs]
 
-      saveProofs(mintUrl, allRemainingProofs)
-      calculateAllBalances()
+      await saveProofs(mintUrl, allRemainingProofs)
+      await calculateAllBalances()
 
       let description = decodedInvoice.isLnAddress
         ? `Sent to ${decodedInvoice.lnAddress}`
@@ -214,6 +232,13 @@ export default function SendViaLightning({
       }, 2000)
 
     } catch (err) {
+      console.error('Lightning payment error:', err)
+
+      if (counterIncreased && err.message?.includes('already been signed')) {
+        console.log('Rolling back counter due to error')
+        incrementCounter(mintUrl, -counterIncrease)
+      }
+
       let errorMessage = 'Unknown error occurred'
 
       if (err?.message) {
@@ -263,7 +288,7 @@ export default function SendViaLightning({
               }}>
                 Lightning Address detected! Select amount below.
               </div>
-              
+
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
@@ -276,8 +301,8 @@ export default function SendViaLightning({
                     onClick={() => setLnAddressAmount(amount.toString())}
                     style={{
                       padding: '0.6em 0.4em',
-                      background: lnAddressAmount === amount.toString() 
-                        ? 'rgba(255, 140, 0, 0.3)' 
+                      background: lnAddressAmount === amount.toString()
+                        ? 'rgba(255, 140, 0, 0.3)'
                         : 'rgba(255, 140, 0, 0.1)',
                       border: lnAddressAmount === amount.toString()
                         ? '2px solid #FF8C00'
@@ -306,8 +331,8 @@ export default function SendViaLightning({
                     onClick={() => setLnAddressAmount(amount.toString())}
                     style={{
                       padding: '0.6em 0.4em',
-                      background: lnAddressAmount === amount.toString() 
-                        ? 'rgba(255, 140, 0, 0.3)' 
+                      background: lnAddressAmount === amount.toString()
+                        ? 'rgba(255, 140, 0, 0.3)'
                         : 'rgba(255, 140, 0, 0.1)',
                       border: lnAddressAmount === amount.toString()
                         ? '2px solid #FF8C00'
@@ -324,7 +349,7 @@ export default function SendViaLightning({
                   </button>
                 ))}
               </div>
-              
+
               <div style={{ position: 'relative', marginBottom: '1em', isolation: 'isolate' }}>
                 <input
                   type="number"
@@ -375,11 +400,10 @@ export default function SendViaLightning({
             </>
           )}
 
-          {/* Payment Note Input */}
           <div style={{ marginBottom: '1em' }}>
-            <label style={{ 
+            <label style={{
               display: 'block',
-              marginBottom: '0.5em', 
+              marginBottom: '0.5em',
               fontSize: '0.9em',
               opacity: 0.8
             }}>
@@ -502,4 +526,3 @@ export default function SendViaLightning({
     </div>
   )
 }
-

@@ -103,22 +103,28 @@ export default function QRScanner({ onScan, onClose, mode }) {
       }
       
       // Cashu Token
-      if (lowerData.startsWith('cashu')) {
-        let token = lowerData.startsWith('cashu:') 
-          ? data.split(':')[1] 
-          : data.substring(5) // Remove 'cashu' prefix
-        
-        if (token.startsWith('//')) {
-          token = token.slice(2)
-        }
-        
-        // Check if it's a Cashu Request
-        if (token.toLowerCase().startsWith('creq')) {
-          return { type: 'cashu_request', data: token, raw: data }
-        }
-        
-        return { type: 'cashu', data: token, raw: data }
-      }
+if (lowerData.startsWith('cashu')) {
+  let token
+  
+  if (lowerData.startsWith('cashu:')) {
+    // Format: cashu:token or cashu://token
+    token = data.split(':')[1]
+    if (token.startsWith('//')) {
+      token = token.slice(2)
+    }
+  } else {
+    // Format: cashuAtoken or cashuBtoken (no prefix, just the token)
+    // Don't remove any characters - return the full token!
+    token = data
+  }
+
+  // Check if it's a Cashu Request
+  if (token.toLowerCase().startsWith('creq')) {
+    return { type: 'cashu_request', data: token, raw: data }
+  }
+
+  return { type: 'cashu', data: token, raw: data }
+}
       
       // Cashu Request (without cashu: prefix)
       if (lowerData.startsWith('creq')) {

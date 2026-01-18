@@ -28,6 +28,7 @@ export default function SettingsPage({
   getProofs,
   saveProofs,
   addTransaction,
+  calculateAllBalances, 
   setError,
   onMintSwitch,
   onAddMint,
@@ -139,6 +140,7 @@ export default function SettingsPage({
         getProofs={getProofs}
         saveProofs={saveProofs}
         addTransaction={addTransaction}
+        calculateAllBalances={calculateAllBalances}
         onBack={() => setShowSwap(false)}
         setError={setError}
         setSuccess={setSuccess}

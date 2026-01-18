@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { CashuMint, CashuWallet, getDecodedToken } from '@cashu/cashu-ts'
 import { vibrate } from '../utils/cashu.js'
 import { ArrowDownToLine, Wallet, CheckCircle, FileDown, Key, Lock } from 'lucide-react'
-import { 
-  loadP2PKKeys, 
-  getP2PKSettings, 
-  isLocked, 
-  isLockedToUs, 
+import {
+  loadP2PKKeys,
+  getP2PKSettings,
+  isLocked,
+  isLockedToUs,
   getPrivateKeyForP2PKToken,
   setPrivateKeyUsed
 } from '../utils/p2pk.js'
@@ -39,7 +39,6 @@ export default function ReceivePage({
   const [tokenLockStatus, setTokenLockStatus] = useState(null)
   const [showP2PKKeyPage, setShowP2PKKeyPage] = useState(false)
 
-  // Load P2PK settings and keys
   useEffect(() => {
     const settings = getP2PKSettings()
     setShowP2PKQuickAccess(settings.showQuickAccess)
@@ -47,7 +46,6 @@ export default function ReceivePage({
     setP2pkKeys(keys)
   }, [])
 
-  // Check token lock status when token changes
   useEffect(() => {
     if (!receiveToken) {
       setTokenLockStatus(null)
@@ -55,14 +53,39 @@ export default function ReceivePage({
     }
 
     try {
-      const decoded = getDecodedToken(receiveToken.trim())
-      if (!decoded || !decoded.token || !decoded.token[0]) {
+      let tokenForCheck = receiveToken.trim()
+      if (tokenForCheck.toLowerCase().startsWith('cashu')) {
+        if (tokenForCheck.startsWith('cashu:')) {
+          tokenForCheck = tokenForCheck.substring(6)
+          if (tokenForCheck.startsWith('//')) {
+            tokenForCheck = tokenForCheck.substring(2)
+          }
+        } else {
+          tokenForCheck = tokenForCheck.substring(5)
+        }
+      }
+
+      const decoded = getDecodedToken(tokenForCheck)
+      console.log('Decoded for lock check:', decoded)
+
+      let proofs
+
+      if (decoded.token && Array.isArray(decoded.token)) {
+        proofs = decoded.token[0]?.proofs
+      } else if (decoded.proofs) {
+        proofs = decoded.proofs
+      } else if (Array.isArray(decoded)) {
+        proofs = decoded[0]?.proofs
+      }
+
+      if (!proofs || proofs.length === 0) {
+        console.log('No proofs found')
         setTokenLockStatus(null)
         return
       }
 
-      const proofs = decoded.token[0].proofs
-      
+      console.log('Checking lock status for proofs:', proofs)
+
       if (isLocked(proofs)) {
         if (isLockedToUs(proofs)) {
           setTokenLockStatus('locked-to-us')
@@ -76,33 +99,56 @@ export default function ReceivePage({
         console.log('[P2PK] Token is not locked')
       }
     } catch (err) {
+      console.error('Lock check error:', err)
       setTokenLockStatus(null)
     }
   }, [receiveToken])
 
-  // Auto-populate from scanned data
   useEffect(() => {
     if (scannedData) {
       const data = scannedData.trim()
       const dataLower = data.toLowerCase()
-      
+
       try {
-        const decoded = getDecodedToken(data)
-        
-        if (decoded && decoded.token && decoded.token.length > 0) {
+        let tokenForDecode = data
+        if (tokenForDecode.toLowerCase().startsWith('cashu')) {
+          if (tokenForDecode.startsWith('cashu:')) {
+            tokenForDecode = tokenForDecode.substring(6)
+            if (tokenForDecode.startsWith('//')) {
+              tokenForDecode = tokenForDecode.substring(2)
+            }
+          } else {
+            tokenForDecode = tokenForDecode.substring(5)
+          }
+        }
+
+        const decoded = getDecodedToken(tokenForDecode)
+        console.log('Scanned token decoded:', decoded)
+
+        let isValidToken = false
+
+        if (decoded.token && Array.isArray(decoded.token) && decoded.token.length > 0) {
+          console.log('V3 token detected from scan')
+          isValidToken = true
+        } else if (decoded.mint && decoded.proofs) {
+          console.log('V4 token detected from scan')
+          isValidToken = true
+        } else if (Array.isArray(decoded) && decoded.length > 0 && decoded[0].proofs) {
+          console.log('Array format token detected from scan')
+          isValidToken = true
+        }
+
+        if (isValidToken) {
           setReceiveMethod('ecash')
           setReceiveToken(data)
-          setSuccess('✓ Cashu token detected!')
-          
-          setTimeout(() => {
-            handleReceiveEcash()
-          }, 500)
+          setError('')
+          setSuccess('Cashu token detected!')
           return
         }
       } catch (err) {
-        // Not a cashu token
+        console.log('Not a cashu token:', err)
       }
-      
+
       if (dataLower.startsWith('ln')) {
         setError('Cannot receive Lightning invoices directly. Use "Get Tokens" on main page.')
         setTimeout(() => {
@@ -110,7 +156,7 @@ export default function ReceivePage({
         }, 3000)
         return
       }
-      
+
       setError('Unknown QR code format. Please scan a Cashu token.')
       setTimeout(() => {
         setError('')
@@ -129,60 +175,138 @@ export default function ReceivePage({
   const handleReceiveEcash = async () => {
     if (!receiveToken) return
 
+    let detectedMintUrl
+
     try {
       setLoading(true)
       setError('')
 
       const cleanToken = receiveToken.trim()
 
-      let decoded
-      try {
-        decoded = getDecodedToken(cleanToken)
-      } catch (decodeErr) {
-        throw new Error(`Cannot read token. Make sure you copied the entire token.`)
+      let tokenToDecode = cleanToken
+      if (tokenToDecode.toLowerCase().startsWith('cashu')) {
+        if (tokenToDecode.startsWith('cashu:')) {
+          tokenToDecode = tokenToDecode.substring(6)
+          if (tokenToDecode.startsWith('//')) {
+            tokenToDecode = tokenToDecode.substring(2)
+          }
+        } else {
+          tokenToDecode = tokenToDecode.substring(5)
+        }
       }
 
-      const detectedMintUrl = decoded.token[0]?.mint
+      console.log('Original token:', cleanToken.substring(0, 20) + '...')
+      console.log('Token to decode:', tokenToDecode.substring(0, 20) + '...')
+
+      let decoded
+      try {
+        decoded = getDecodedToken(tokenToDecode)
+        console.log('Token decoded:', decoded)
+      } catch (decodeErr) {
+        console.error('Decode error:', decodeErr)
+        throw new Error(`Cannot read token. Make sure you copied the full token.`)
+      }
+
+      console.log('FULL decoded:', decoded)
+      console.log('decoded keys:', Object.keys(decoded))
+
+      let tokenData
+      let proofs
+
+      if (decoded.token && Array.isArray(decoded.token)) {
+        console.log('Using OLD token format')
+        tokenData = decoded.token[0]
+        detectedMintUrl = tokenData?.mint
+        proofs = tokenData?.proofs
+      } else if (decoded.mint && decoded.proofs) {
+        console.log('Using NEW token format (2.7.4)')
+        tokenData = decoded
+        detectedMintUrl = decoded.mint
+        proofs = decoded.proofs
+      } else if (Array.isArray(decoded)) {
+        console.log('Using DIRECT ARRAY format')
+        tokenData = decoded[0]
+        detectedMintUrl = tokenData?.mint
+        proofs = tokenData?.proofs
+      } else {
+        console.error('Unknown token structure:', decoded)
+        throw new Error('Unknown token structure. Check console for details.')
+      }
 
       if (!detectedMintUrl) {
         throw new Error('Token does not contain mint information')
       }
 
+      if (!proofs || proofs.length === 0) {
+        throw new Error('Token does not contain any proofs')
+      }
+
+      console.log('Detected mint:', detectedMintUrl)
+      console.log('Proofs count:', proofs.length)
+
       const hasMint = allMints.some(m => m.url === detectedMintUrl)
 
       if (!hasMint) {
-        throw new Error(`Token is from unknown mint: ${detectedMintUrl}\n\nAdd this mint in Settings first.`)
+        console.log('Mint not in list, attempting to receive anyway...')
       }
 
       const targetMint = new CashuMint(detectedMintUrl)
       const targetWallet = new CashuWallet(targetMint, { bip39seed: bip39Seed })
 
-      const proofs = decoded.token[0].proofs
-      let receiveOptions = {}
+      const existingProofs = await getProofs(detectedMintUrl)
+
+      let receiveOptions = {
+        counter: 0,
+        proofsWeHave: existingProofs
+      }
 
       if (isLocked(proofs)) {
+        console.log('Token is P2PK locked')
+
         if (!isLockedToUs(proofs)) {
           throw new Error('This token is locked to a different key. You cannot receive it.')
         }
 
-        const privateKey = getPrivateKeyForP2PKToken(cleanToken)
-        
+        const privateKey = getPrivateKeyForP2PKToken(tokenToDecode)
+
         if (!privateKey) {
+          console.error('No matching private key found')
+          console.log('Proofs:', proofs)
           throw new Error('Token is locked but no matching private key found. Cannot receive.')
         }
 
+        console.log('Found matching private key!')
         receiveOptions.privkey = privateKey
         setPrivateKeyUsed(privateKey)
       }
 
-      const receivedProofs = await targetWallet.receive(decoded, receiveOptions)
+      console.log('Receiving with options:', { ...receiveOptions, privkey: receiveOptions.privkey ? '***' : undefined })
+
+      let receivedProofs
+
+      if (tokenToDecode.startsWith('B')) {
+        console.log('Detected V4 token (B prefix)')
+
+        const v4Options = {}
+
+        if (receiveOptions.privkey) {
+          v4Options.privkey = receiveOptions.privkey
+        }
+
+        receivedProofs = await targetWallet.receive(tokenToDecode, v4Options)
+
+      } else {
+        console.log('Detected V3 token (A prefix)')
+
+        receivedProofs = await targetWallet.receive(tokenToDecode, receiveOptions)
+      }
 
       if (!receivedProofs || receivedProofs.length === 0) {
         throw new Error('Token already claimed or invalid.')
       }
 
-      const existingProofs = await getProofs(detectedMintUrl)
-      const allProofs = [...existingProofs, ...receivedProofs]
+      const savedProofs = await getProofs(detectedMintUrl)
+      const allProofs = [...savedProofs, ...receivedProofs]
 
       const validProofs = allProofs.filter(p => p && p.amount && typeof p.amount === 'number')
       await saveProofs(detectedMintUrl, validProofs)
@@ -190,19 +314,19 @@ export default function ReceivePage({
       calculateAllBalances()
 
       const receivedAmount = receivedProofs.reduce((sum, p) => sum + (p.amount || 0), 0)
-      
-      const txNote = isLocked(proofs) 
-        ? 'P2PK-locked ecash received' 
+
+      const txNote = isLocked(proofs)
+        ? 'P2PK-locked ecash received'
         : 'Ecash token received'
-      
+
       addTransaction('receive', receivedAmount, txNote, detectedMintUrl)
 
       vibrate([200])
 
       const successMsg = isLocked(proofs)
-        ? `🔓 Unlocked & received ${receivedAmount} sats!`
+        ? `Unlocked & received ${receivedAmount} sats!`
         : `Received ${receivedAmount} sats!`
-      
+
       setSuccess(successMsg)
       setReceiveToken('')
 
@@ -212,8 +336,18 @@ export default function ReceivePage({
       }, 2000)
 
     } catch (err) {
+      console.error('Receive error:', err)
+      console.error('Error message:', err.message)
+
       if (err.message.includes('already spent') || err.message.includes('already claimed')) {
         setError('Token already claimed or spent')
+      } else if (err.message.includes('no outputs provided') || err.message.includes('no keys found')) {
+        const hasMint = allMints.some(m => m.url === detectedMintUrl)
+        if (!hasMint) {
+          setError(`Token is from unknown mint: ${detectedMintUrl}. Add this mint in Settings first.`)
+        } else {
+          setError(`${err.message}`)
+        }
       } else {
         setError(`${err.message}`)
       }
@@ -224,12 +358,10 @@ export default function ReceivePage({
 
   const handleP2PKQuickAccess = () => {
     if (p2pkKeys.length === 0) {
-      // No keys, navigate to P2PK settings
       if (onNavigate) {
         onNavigate('p2pk-settings')
       }
     } else {
-      // Show P2PK key page
       setShowP2PKKeyPage(true)
     }
   }
@@ -241,7 +373,6 @@ export default function ReceivePage({
     }
   }
 
-  // Show P2PK Key Page
   if (showP2PKKeyPage && p2pkKeys.length > 0) {
     const latestKey = p2pkKeys[p2pkKeys.length - 1]
     return (
@@ -290,12 +421,11 @@ export default function ReceivePage({
           <button className="primary-btn" style={{ marginBottom: '0.5em' }} onClick={() => setReceiveMethod('ecash')}>
             <FileDown size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Paste Ecash Token
           </button>
-          
+
           <button className="secondary-btn" onClick={() => setReceiveMethod('lightning')}>
             ⚡ Receive via Lightning
           </button>
 
-          {/* P2PK Quick Access Button */}
           {showP2PKQuickAccess && (
             <button
               className="secondary-btn"
@@ -324,7 +454,6 @@ export default function ReceivePage({
             Paste a Cashu token
           </p>
 
-          {/* Token Lock Status - ONLY show for locked tokens */}
           {tokenLockStatus && tokenLockStatus !== 'unlocked' && (
             <div style={{
               marginBottom: '1em',
@@ -347,12 +476,12 @@ export default function ReceivePage({
               {tokenLockStatus === 'locked-to-us' ? (
                 <>
                   <Key size={16} />
-                  <span>🔓 Token locked to your key - will auto-unlock</span>
+                  <span>Token locked to your key - will auto-unlock</span>
                 </>
               ) : (
                 <>
                   <Lock size={16} />
-                  <span>⚠️ Token locked to different key - cannot receive</span>
+                  <span>Token locked to different key - cannot receive</span>
                 </>
               )}
             </div>
@@ -366,12 +495,12 @@ export default function ReceivePage({
               rows={6}
             />
           </div>
-          <button 
-            className="primary-btn" 
-            onClick={handleReceiveEcash} 
+          <button
+            className="primary-btn"
+            onClick={handleReceiveEcash}
             disabled={loading || !receiveToken || tokenLockStatus === 'locked-other'}
           >
-            {loading ? 'Receiving...' : tokenLockStatus === 'locked-to-us' ? '🔓 Unlock & Receive' : 'Receive Token'}
+            {loading ? 'Receiving...' : tokenLockStatus === 'locked-to-us' ? 'Unlock & Receive' : 'Receive Token'}
           </button>
 
           <button className="back-btn" style={{ marginTop: '1em', position: 'relative', left: 0, transform: 'none' }} onClick={resetReceivePage}>
@@ -392,4 +521,3 @@ export default function ReceivePage({
     </div>
   )
 }
-

@@ -118,7 +118,7 @@ function App() {
       setSelectedCurrency(getSelectedCurrency())
       setDisplayModeState(getDisplayMode())
     }
-    
+
     window.addEventListener('storage', handleStorageChange)
     const interval = setInterval(handleStorageChange, 1000)
     return () => {
@@ -141,10 +141,9 @@ function App() {
         secondary: btcPrice ? formatFiat(satsToFiat(totalBalance, btcPrice), selectedCurrency) : null
       }
     } else {
-      // Fiat mode - show number on top, currency below (like sats)
       const fiatAmount = btcPrice ? satsToFiat(totalBalance, btcPrice).toFixed(2) : '0.00'
       const currencySymbol = selectedCurrency.toUpperCase()
-      
+
       return {
         primary: fiatAmount,
         primaryUnit: currencySymbol,
@@ -153,23 +152,36 @@ function App() {
     }
   }
 
+  // Adaptive polling for mint quotes (like Boardwalk!)
   useEffect(() => {
-    window.showSuccess = (msg) => {
-      setSuccess(msg)
-      setTimeout(() => setSuccess(''), 3000)
-    }
-    return () => {
-      delete window.showSuccess
-    }
-  }, [setSuccess])
+    const ONE_SECOND = 1000
+    const FIVE_SECONDS = 5000
+    const THIRTY_SECONDS = 30000
+    const ONE_MINUTE = 60000
+    const FIVE_MINUTES = 5 * ONE_MINUTE
+    const TEN_MINUTES = 10 * ONE_MINUTE
+    const ONE_HOUR = 60 * ONE_MINUTE
 
-  useEffect(() => {
+    const getPollingInterval = (createdTimestamp) => {
+      const ageMs = Date.now() - createdTimestamp
+      
+      if (ageMs < FIVE_MINUTES) {
+        return ONE_SECOND  // Super fast for first 5 minutes
+      }
+      if (ageMs < TEN_MINUTES) {
+        return FIVE_SECONDS  // Slower after 5 minutes
+      }
+      if (ageMs < ONE_HOUR) {
+        return THIRTY_SECONDS  // Even slower after 10 minutes
+      }
+      return ONE_MINUTE  // Very slow after 1 hour
+    }
+
     const checkPendingQuotes = async () => {
       const pending = await getPendingQuote()
       if (!pending) return
 
-      const threeMinutes = 3 * 60 * 1000
-      if (Date.now() - pending.timestamp > threeMinutes) {
+      if (Date.now() - pending.timestamp > ONE_HOUR) {
         await clearPendingQuote()
         setLightningInvoice('')
         setLightningInvoiceQR('')
@@ -181,7 +193,23 @@ function App() {
       try {
         const mint = new CashuMint(pending.mintUrl)
         const tempWallet = new CashuWallet(mint, { bip39seed: bip39Seed })
-        const { proofs } = await tempWallet.mintTokens(pending.amount, pending.quote)
+
+        const mintQuote = await tempWallet.mint.checkMintQuote(pending.quote)
+
+        console.log('✅ Quote status:', mintQuote.state)
+
+        if (mintQuote.state !== 'PAID') {
+          console.log('⏳ Quote not paid yet, state:', mintQuote.state)
+          return false
+        }
+
+        console.log('🔨 Minting proofs for amount:', pending.amount)
+        const proofs = await tempWallet.mintProofs(
+          pending.amount,
+          mintQuote.quote
+        )
+
+        console.log('✅ Minted proofs:', proofs.length)
 
         if (proofs && proofs.length > 0) {
           const existingProofs = await getProofs(pending.mintUrl)
@@ -191,7 +219,7 @@ function App() {
           await addTransaction('receive', pending.amount, 'Minted via Lightning', pending.mintUrl)
           await clearPendingQuote()
           vibrate([200])
-          setSuccess(`Received ${pending.amount} sats!`)
+          setSuccess(`✅ Received ${pending.amount} sats!`)
           setLightningInvoice('')
           setLightningInvoiceQR('')
           setCurrentQuote(null)
@@ -200,26 +228,32 @@ function App() {
           return true
         }
       } catch (err) {
+        console.error('❌ Mint error:', err)
         if (err.message?.includes('not paid') || err.message?.includes('pending')) {
           return false
         }
-        console.error('Error checking pending quote:', err)
         return false
       }
     }
 
-    const checkOnMount = async () => {
-      const hasPending = await getPendingQuote()
-      if (hasPending) await checkPendingQuotes()
+    let timeoutId = null
+
+    const poll = async () => {
+      const pending = await getPendingQuote()
+      if (!pending) return
+
+      await checkPendingQuotes()
+      
+      const interval = getPollingInterval(pending.timestamp)
+      console.log(`⏱️ Next check in ${interval}ms`)
+      timeoutId = setTimeout(poll, interval)
     }
 
-    checkOnMount()
-    const interval = setInterval(async () => {
-      const hasPending = await getPendingQuote()
-      if (hasPending) await checkPendingQuotes()
-    }, 5000)
+    poll()
 
-    return () => clearInterval(interval)
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [wallet, allMints, bip39Seed, getProofs, saveProofs, calculateAllBalances, addTransaction])
 
   const handleScan = async (data) => {
@@ -275,15 +309,23 @@ function App() {
       setLoading(true)
       setError('')
       const amount = parseInt(mintAmount)
-      const quote = await wallet.createMintQuote(amount)
-      setLightningInvoice(quote.request)
-      setCurrentQuote(quote)
-      savePendingQuote(quote, amount, mintUrl)
-      const qr = await generateQR(quote.request)
+
+      const mintQuote = await wallet.mint.createMintQuote({
+        amount: amount,
+        unit: 'sat'
+      })
+
+      console.log('✅ Mint quote created:', mintQuote)
+
+      setLightningInvoice(mintQuote.request)
+      setCurrentQuote(mintQuote)
+      savePendingQuote(mintQuote.quote, amount, mintUrl)
+      const qr = await generateQR(mintQuote.request)
       setLightningInvoiceQR(qr)
       setSuccess('Invoice created! Checking for payment...')
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
+      console.error('❌ Mint error:', err)
       setError(`Failed: ${err.message}`)
     } finally {
       setLoading(false)
@@ -438,9 +480,9 @@ function App() {
         <div className="balance-amount">{balance.primary}</div>
         {balance.primaryUnit && <div className="balance-unit">{balance.primaryUnit}</div>}
         {mintInfo && <div className="mint-name">{mintInfo.name || 'Connected'}</div>}
-        
+
         {balance.secondary && (
-          <div 
+          <div
             onClick={toggleDisplayMode}
             style={{
               textAlign: 'center',

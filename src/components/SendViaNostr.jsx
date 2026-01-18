@@ -44,79 +44,114 @@ export default function SendViaNostr({
   }, [recipientNpub])
 
   const handleGenerateAndSend = async () => {
-    if (!sendAmount || parseInt(sendAmount) <= 0) {
-      setError('Please enter an amount')
-      return
-    }
-
-    if (!recipientNpub.trim()) {
-      setError('Please enter recipient npub')
-      return
-    }
-
-    if (!isValidNpub(recipientNpub)) {
-      setError('Invalid npub format')
-      return
-    }
-
-    if (!isConnected) {
-      setError('Please connect your Nostr identity in Settings first')
-      return
-    }
-
-    try {
-      setSending(true)
-      setError('')
-
-      const amount = parseInt(sendAmount)
-      const proofs = await getProofs(mintUrl)
-
-      if (proofs.length === 0) {
-        throw new Error('No tokens available. Mint some first!')
-      }
-
-      if (currentMintBalance < amount) {
-        throw new Error(`Insufficient balance. You have ${currentMintBalance} sats.`)
-      }
-
-      const result = await wallet.send(amount, proofs)
-
-      if (!result) {
-        throw new Error('Failed to generate token')
-      }
-
-      const { keep, send, returnChange } = result
-      const proofsToKeep = keep || returnChange || []
-      const proofsToSend = send || []
-
-      if (!proofsToSend || proofsToSend.length === 0) {
-        throw new Error('Failed to create send proofs')
-      }
-
-      saveProofs(mintUrl, proofsToKeep)
-      calculateAllBalances()
-
-      const token = getEncodedToken({
-        token: [{ mint: mintUrl, proofs: proofsToSend }]
-      })
-
-      await sendNostrToken(nsec, recipientNpub, token, message)
-
-      addTransaction('send', amount, `Sent to ${formatPubkey(recipientNpub)} via Nostr`, mintUrl)
-
-      setSuccess('Token sent via Nostr DM!')
-      vibrate([100, 50, 100])
-
-      setTimeout(() => {
-        resetSendPage()
-      }, 2000)
-
-    } catch (err) {
-      setError(`Failed: ${err.message}`)
-    } finally {
-      setSending(false)
-    }
+  if (!sendAmount || parseInt(sendAmount) <= 0) {
+    setError('Please enter an amount')
+    return
   }
+
+  if (!recipientNpub.trim()) {
+    setError('Please enter recipient npub')
+    return
+  }
+
+  if (!isValidNpub(recipientNpub)) {
+    setError('Invalid npub format')
+    return
+  }
+
+  if (!isConnected) {
+    setError('Please connect your Nostr identity in Settings first')
+    return
+  }
+
+  try {
+    setSending(true)
+    setError('')
+
+    const amount = parseInt(sendAmount)
+    const proofs = await getProofs(mintUrl)
+
+    if (proofs.length === 0) {
+      throw new Error('No tokens available. Mint some first!')
+    }
+
+    if (currentMintBalance < amount) {
+      throw new Error(`Insufficient balance. You have ${currentMintBalance} sats.`)
+    }
+
+    console.log('Sending', amount, 'sats')
+
+    // EXACT same pattern as SendViaEcash - no keysetId, just empty options
+    const sendOptions = {}
+    
+    console.log('Calling wallet.send with options:', sendOptions)
+    const result = await wallet.send(amount, proofs, sendOptions)
+    console.log('wallet.send result:', result)
+
+    if (!result) {
+      throw new Error('wallet.send returned nothing')
+    }
+
+    // Same result handling as SendViaEcash
+    let proofsToSend
+    let proofsToKeep
+
+    if (result.send && result.keep !== undefined) {
+      proofsToSend = result.send
+      proofsToKeep = result.keep
+    } else if (result.returnChange && result.send) {
+      proofsToSend = result.send
+      proofsToKeep = result.returnChange
+    } else if (Array.isArray(result)) {
+      proofsToSend = result
+      proofsToKeep = []
+    } else {
+      console.error('Unknown result structure:', result)
+      throw new Error('Unexpected wallet.send response format')
+    }
+
+    if (!proofsToSend || proofsToSend.length === 0) {
+      throw new Error('Failed to create send proofs')
+    }
+
+    console.log('Proofs to send:', proofsToSend.length)
+    console.log('Proofs to keep:', proofsToKeep.length)
+
+    await saveProofs(mintUrl, proofsToKeep)
+    calculateAllBalances()
+
+    // Generate token - same as SendViaEcash
+    const token = getEncodedToken({
+      mint: mintUrl,
+      proofs: proofsToSend
+    })
+
+    console.log('Generated token:', token.substring(0, 50) + '...')
+
+    // NOW send via Nostr
+    console.log('Sending token via Nostr...')
+    await sendNostrToken(nsec, recipientNpub, token, message)
+    
+    const txId = addTransaction('send', amount, `Sent to ${formatPubkey(recipientNpub)} via Nostr`, mintUrl, 'pending')
+    addPendingToken(token, amount, mintUrl, proofsToSend, txId)
+
+    setSuccess('✅ Token sent via Nostr DM!')
+    vibrate([100, 50, 100])
+
+    setTimeout(() => {
+      resetSendPage()
+      setSendAmount('')
+      setRecipientNpub('')
+      setMessage('')
+    }, 2000)
+
+  } catch (err) {
+    console.error('Send error:', err)
+    setError(`Failed: ${err.message}`)
+  } finally {
+    setSending(false)
+  }
+}
 
   if (!isConnected) {
     return (

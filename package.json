@@ -14,7 +14,8 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@cashu/cashu-ts": "^1.0.0",
+    "@cashu/cashu-ts": "^2.7.4",
+    "@cashu/crypto": "^0.3.4",
     "@noble/hashes": "^2.0.1",
     "@scure/bip39": "^2.0.1",
     "@zxing/browser": "^0.1.5",

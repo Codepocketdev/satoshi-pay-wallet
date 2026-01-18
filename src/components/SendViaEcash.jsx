@@ -62,27 +62,53 @@ export default function SendViaEcash({
         isP2PKLocked = true
       }
 
-      const result = await wallet.send(amount, proofs, sendOptions)
+      // 2.7.4: wallet.send returns { send: [...], keep: [...] }
+console.log('Calling wallet.send with options:', sendOptions)
+const result = await wallet.send(amount, proofs, sendOptions)
+console.log('wallet.send result:', result)
 
-      if (!result) {
-        throw new Error('wallet.send returned nothing')
-      }
+if (!result) {
+  throw new Error('wallet.send returned nothing')
+}
 
-      const { keep, send, returnChange } = result
+// 2.7.4: Result structure changed
+let proofsToSend
+let proofsToKeep
 
-      const proofsToKeep = keep || returnChange || []
-      const proofsToSend = send || []
+if (result.send && result.keep !== undefined) {
+  // New 2.7.4 format: { send: [...], keep: [...] }
+  proofsToSend = result.send
+  proofsToKeep = result.keep
+} else if (result.returnChange && result.send) {
+  // Old format fallback: { send: [...], returnChange: [...] }
+  proofsToSend = result.send
+  proofsToKeep = result.returnChange
+} else if (Array.isArray(result)) {
+  // Direct array (shouldn't happen but handle it)
+  proofsToSend = result
+  proofsToKeep = []
+} else {
+  console.error('Unknown result structure:', result)
+  throw new Error('Unexpected wallet.send response format')
+}
 
-      if (!proofsToSend || proofsToSend.length === 0) {
-        throw new Error('Failed to create send proofs')
-      }
+if (!proofsToSend || proofsToSend.length === 0) {
+  throw new Error('Failed to create send proofs')
+}
 
-      saveProofs(mintUrl, proofsToKeep)
-      calculateAllBalances()
+console.log('Proofs to send:', proofsToSend.length)
+console.log('Proofs to keep:', proofsToKeep.length)
 
-      const token = getEncodedToken({
-        token: [{ mint: mintUrl, proofs: proofsToSend }]
-      })
+await saveProofs(mintUrl, proofsToKeep)
+calculateAllBalances()
+
+// Generate token
+const token = getEncodedToken({
+  mint: mintUrl,
+  proofs: proofsToSend
+})
+
+console.log('Generated token:', token.substring(0, 50) + '...')
 
       const qr = await generateQR(token)
       setGeneratedToken(token)

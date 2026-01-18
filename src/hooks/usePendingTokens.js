@@ -89,50 +89,73 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
   }
 
   const reclaimPendingToken = async (pendingToken, getProofs, saveProofs, calculateAllBalances, setError, setSuccess, setLoading) => {
-    try {
-      setLoading(true)
-      setError('')
+  try {
+    setLoading(true)
+    setError('')
 
-      const decoded = getDecodedToken(pendingToken.token)
-      const tokenMintUrl = decoded.token[0]?.mint
-
-      const targetMint = new CashuMint(tokenMintUrl)
-      const targetWallet = new CashuWallet(targetMint, { bip39seed: bip39Seed })
-
-      const proofs = await targetWallet.receive(pendingToken.token)
-
-      if (proofs && proofs.length > 0) {
-        // 🔥 FIX: Add await
-        const existingProofs = await getProofs(tokenMintUrl)
-        const allProofs = [...existingProofs, ...proofs]
-        // 🔥 FIX: Add await
-        await saveProofs(tokenMintUrl, allProofs)
-        await calculateAllBalances()
-
-        const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
-        setPendingTokens(updated)
-        // 🔥 FIX: Add await
-        await savePendingTokens(updated)
-
-        vibrate([200])
-
-        setSuccess(`Reclaimed ${pendingToken.amount} sats!`)
-        setTimeout(() => setSuccess(''), 2000)
-      }
-    } catch (err) {
-      if (err.message?.includes('already spent') || err.message?.includes('already claimed')) {
-        setError('Token already claimed by recipient')
-        const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
-        setPendingTokens(updated)
-        // 🔥 FIX: Add await
-        await savePendingTokens(updated)
-      } else {
-        setError(`Could not reclaim: ${err.message}`)
-      }
-    } finally {
-      setLoading(false)
+    // 🔍 STEP 1: Decode the token
+    const decoded = getDecodedToken(pendingToken.token)
+    console.log('🔍 Decoded token:', decoded) // Debug log
+    
+    // 🔧 STEP 2: Handle different token structures in 2.7.4
+    let tokenMintUrl
+    
+    if (decoded.token && Array.isArray(decoded.token)) {
+      // Old format: { token: [{mint: "...", proofs: [...]}] }
+      tokenMintUrl = decoded.token[0]?.mint
+    } else if (decoded.mint) {
+      // New format: { mint: "...", proofs: [...] }
+      tokenMintUrl = decoded.mint
+    } else if (Array.isArray(decoded)) {
+      // Direct array: [{mint: "...", proofs: [...]}]
+      tokenMintUrl = decoded[0]?.mint
     }
+    
+    if (!tokenMintUrl) {
+      throw new Error('Could not find mint URL in token')
+    }
+    
+    console.log('✅ Mint URL:', tokenMintUrl) // Debug log
+
+    // 🔧 STEP 3: Create wallet
+    const targetMint = new CashuMint(tokenMintUrl)
+    const targetWallet = new CashuWallet(targetMint, { bip39seed: bip39Seed })
+
+    // 🔧 STEP 4: Receive with new 2.7.4 syntax
+    const proofs = await targetWallet.receive(pendingToken.token, {
+      counter: 0,
+      proofsWeHave: await getProofs(tokenMintUrl)
+    })
+
+    if (proofs && proofs.length > 0) {
+      const existingProofs = await getProofs(tokenMintUrl)
+      const allProofs = [...existingProofs, ...proofs]
+      await saveProofs(tokenMintUrl, allProofs)
+      await calculateAllBalances()
+
+      const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
+      setPendingTokens(updated)
+      await savePendingTokens(updated)
+
+      vibrate([200])
+
+      setSuccess(`✅ Reclaimed ${pendingToken.amount} sats!`)
+      setTimeout(() => setSuccess(''), 2000)
+    }
+  } catch (err) {
+    console.error('❌ Reclaim error:', err) // Debug log
+    if (err.message?.includes('already spent') || err.message?.includes('already claimed')) {
+      setError('Token already claimed by recipient')
+      const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
+      setPendingTokens(updated)
+      await savePendingTokens(updated)
+    } else {
+      setError(`Could not reclaim: ${err.message}`)
+    }
+  } finally {
+    setLoading(false)
   }
+}
 
   return {
     pendingTokens,

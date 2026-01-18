@@ -54,6 +54,23 @@ export const useWallet = () => {
   const [success, setSuccess] = useState('')
   const isInitializing = useRef(false)
 
+  // Helper to get keyset ID for current wallet
+  const getKeysetId = (walletInstance) => {
+    try {
+      if (walletInstance?.keys?.id) {
+        return walletInstance.keys.id
+      }
+      if (walletInstance?.keysets && walletInstance.keysets.length > 0) {
+        const activeKeyset = walletInstance.keysets.find(k => k.active)
+        return activeKeyset?.id || walletInstance.keysets[0]?.id
+      }
+      return null
+    } catch (err) {
+      console.warn('Could not get keyset ID:', err)
+      return null
+    }
+  }
+
   useEffect(() => {
     if (mintUrl) {
       localStorage.setItem('selected_mint_url', mintUrl)
@@ -62,7 +79,6 @@ export const useWallet = () => {
 
   useEffect(() => {
     const initializeWallet = async () => {
-      // 🔥 MIGRATE FROM LOCALSTORAGE FIRST
       await migrateFromLocalStorage()
 
       const existingSeed = localStorage.getItem('wallet_seed')
@@ -95,38 +111,50 @@ export const useWallet = () => {
   }, [mintUrl, bip39Seed])
 
   const initWallet = async () => {
-    if (isInitializing.current) {
-      console.log('Init already in progress, skipping...')
-      return
-    }
+  if (isInitializing.current) {
+    console.log('Init already in progress, skipping...')
+    return
+  }
 
-    isInitializing.current = true
+  isInitializing.current = true
+
+  try {
+    setLoading(true)
+    setError('')
+
+    const mint = new CashuMint(mintUrl)
+    
+    // Create wallet with just bip39seed first
+    const newWallet = new CashuWallet(mint, {
+      bip39seed: bip39Seed,
+      unit: 'sat'
+    })
 
     try {
-      setLoading(true)
-      setError('')
-
-      const mint = new CashuMint(mintUrl)
-      const newWallet = new CashuWallet(mint, { bip39seed: bip39Seed })
-
-      try {
-        const info = await mint.getInfo()
-        setMintInfo(info)
-      } catch (infoError) {
-        console.warn('Failed to fetch mint info:', infoError)
-        setMintInfo({ name: 'Mint', nuts: {} })
-      }
-
-      setWallet(newWallet)
-    } catch (err) {
-      console.error('Wallet init error:', err)
-      setError(`Failed to connect to mint: ${err.message}`)
-      setWallet(null)
-    } finally {
-      setLoading(false)
-      isInitializing.current = false
+      // Fetch mint info after wallet creation
+      const info = await mint.getInfo()
+      setMintInfo(info)
+      
+      // Load keys into the wallet
+      await newWallet.getKeys()
+      
+      console.log('✅ Wallet initialized for 2.7.4')
+      console.log('Available keysets:', newWallet.keysets?.map(k => k.id))
+    } catch (infoError) {
+      console.warn('Failed to fetch mint data:', infoError)
+      setMintInfo({ name: 'Mint', nuts: {} })
     }
+
+    setWallet(newWallet)
+  } catch (err) {
+    console.error('Wallet init error:', err)
+    setError(`Failed to connect to mint: ${err.message}`)
+    setWallet(null)
+  } finally {
+    setLoading(false)
+    isInitializing.current = false
   }
+}
 
   const calculateAllBalances = async () => {
     try {
@@ -176,7 +204,7 @@ export const useWallet = () => {
       setLoading(true)
       setError('')
 
-      console.log('Starting wallet restoration...')
+      console.log('Starting wallet restoration with 2.7.4...')
 
       const seed = deriveMasterKey(restoredSeed)
       const encKey = deriveEncryptionKey(restoredSeed)
@@ -225,7 +253,7 @@ export const useWallet = () => {
                     const amount = restoredProofs.reduce((sum, p) => sum + p.amount, 0)
                     totalRestored += amount
 
-                    console.log(`Restored ${amount} sats from ${mintToScan.name}`)
+                    console.log(`✅ Restored ${amount} sats from ${mintToScan.name}`)
                   }
                 } catch (keysetErr) {
                   console.log(`No tokens in keyset ${keysetId}`)
@@ -245,7 +273,7 @@ export const useWallet = () => {
 
       await calculateAllBalances()
 
-      console.log(`Wallet restoration complete. Restored ${totalRestored} sats total.`)
+      console.log(`✅ Wallet restoration complete. Restored ${totalRestored} sats total.`)
 
       setSuccess(`Wallet restored successfully! Found ${totalRestored} sats.`)
       setTimeout(() => setSuccess(''), 5000)
@@ -362,4 +390,3 @@ export const useWallet = () => {
     setSuccess
   }
 }
-

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowDownUp, ArrowLeft, Loader2 } from 'lucide-react'
 import { CashuMint, CashuWallet } from '@cashu/cashu-ts'
+import { vibrate } from '../utils/cashu.js'
 
 export default function MintSwap({
   allMints,
@@ -48,15 +49,23 @@ export default function MintSwap({
 
       console.log('Starting swap:', { from: fromMint.name, to: toMint.name, amount })
 
-      console.log('Step 1: Creating mint quote on', toMint.name)
+      console.log('Step 1: Creating destination wallet and loading keys')
       const toMintInstance = new CashuMint(toMint.url)
       const toWallet = new CashuWallet(toMintInstance, { bip39seed: bip39Seed })
+      await toWallet.getKeys() // LOAD KEYS!
+      console.log('Destination wallet ready')
+
+      console.log('Step 2: Creating mint quote on', toMint.name)
       const mintQuote = await toWallet.createMintQuote(amount)
       console.log('Mint quote created:', mintQuote.quote)
 
-      console.log('Step 2: Creating melt quote on', fromMint.name)
+      console.log('Step 3: Creating source wallet and loading keys')
       const fromMintInstance = new CashuMint(fromMint.url)
       const fromWallet = new CashuWallet(fromMintInstance, { bip39seed: bip39Seed })
+      await fromWallet.getKeys() // LOAD KEYS!
+      console.log('Source wallet ready')
+
+      console.log('Step 4: Creating melt quote on', fromMint.name)
       const meltQuote = await fromWallet.createMeltQuote(mintQuote.request)
       console.log('Melt quote created:', meltQuote.quote)
 
@@ -68,59 +77,55 @@ export default function MintSwap({
         return
       }
 
-      console.log('Step 3: Getting proofs from source mint')
+      console.log('Step 5: Getting proofs from source mint')
       const allProofs = await getProofs(fromMint.url)
       console.log('Found', allProofs.length, 'proofs')
 
-      let selectedProofs = []
-      let sum = 0
+      console.log('Step 6: Splitting proofs')
+      const sendOptions = {}
+      const sendResult = await fromWallet.send(totalCost, allProofs, sendOptions)
+      
+      const proofsToKeep = sendResult.keep || sendResult.returnChange || []
+      const proofsToMelt = sendResult.send || []
 
-      for (const proof of allProofs) {
-        if (sum >= totalCost) break
-        selectedProofs.push(proof)
-        sum += proof.amount
+      if (!proofsToMelt || proofsToMelt.length === 0) {
+        throw new Error('Failed to prepare proofs for melting')
       }
 
-      if (sum < totalCost) {
-        setError('Unable to select enough proofs for swap')
-        return
+      console.log('Split complete')
+
+      console.log('Step 7: Saving keep proofs BEFORE melting')
+      await saveProofs(fromMint.url, proofsToKeep)
+      console.log('Keep proofs saved')
+
+      console.log('Step 8: Melting tokens')
+      const meltResponse = await fromWallet.meltProofs(meltQuote, proofsToMelt)
+      console.log('Tokens melted')
+
+      console.log('Step 9: Handling melt change')
+      const changeProofs = meltResponse.change || []
+      if (changeProofs.length > 0) {
+        const currentProofs = await getProofs(fromMint.url)
+        await saveProofs(fromMint.url, [...currentProofs, ...changeProofs])
       }
 
-      console.log('Selected', selectedProofs.length, 'proofs totaling', sum, 'sats')
+      console.log('Step 10: Waiting for settlement...')
+      await new Promise(resolve => setTimeout(resolve, 3000))
 
-      console.log('Step 4: Melting tokens from', fromMint.name)
-      const meltResponse = await fromWallet.meltTokens(meltQuote, selectedProofs)
-      console.log('Tokens melted! Lightning invoice paid!')
+      console.log('Step 11: Minting on destination')
+      const newProofs = await toWallet.mintProofs(amount, mintQuote.quote)
+      console.log('Minted', newProofs.length, 'proofs')
 
-      console.log('Step 5: Updating source mint proofs')
-      const remainingProofs = allProofs.filter(p =>
-        !selectedProofs.find(sp => sp.secret === p.secret)
-      )
-
-      if (meltResponse.change && meltResponse.change.length > 0) {
-        console.log('Got', meltResponse.change.length, 'change proofs')
-        remainingProofs.push(...meltResponse.change)
-      }
-
-      saveProofs(fromMint.url, remainingProofs)
-      console.log('Source mint updated')
-
-      console.log('Step 6: Waiting for Lightning settlement...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      console.log('Step 7: Minting tokens on', toMint.name)
-      const { proofs: newProofs } = await toWallet.mintTokens(amount, mintQuote.quote)
-      console.log('Minted', newProofs.length, 'new proofs!')
-
-      console.log('Step 8: Saving proofs to destination mint')
+      console.log('Step 12: Saving to destination')
       const existingToProofs = await getProofs(toMint.url)
-      saveProofs(toMint.url, [...existingToProofs, ...newProofs])
-      console.log('Destination mint updated')
+      await saveProofs(toMint.url, [...existingToProofs, ...newProofs])
+
 
       addTransaction('send', amount, `Swap to ${toMint.name}`, fromMint.url, 'paid')
       addTransaction('receive', amount, `Swap from ${fromMint.name}`, toMint.url, 'paid')
 
       setSuccess(`Swapped ${amount} sats from ${fromMint.name} to ${toMint.name}!`)
+      vibrate([200])
       setSwapAmount('')
 
       console.log('SWAP COMPLETED!')
@@ -131,15 +136,7 @@ export default function MintSwap({
 
     } catch (err) {
       console.error('SWAP ERROR:', err)
-      console.error('Error details:', {
-        message: err?.message,
-        name: err?.name,
-        stack: err?.stack
-      })
-
-      const errorMsg = err?.message || err?.toString() || 'Unknown error occurred'
-      alert('REAL ERROR: ' + errorMsg)
-      alert('ERROR OBJECT: ' + JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      const errorMsg = err?.message || 'Unknown error occurred'
       setError(`Swap failed: ${errorMsg}`)
     } finally {
       setIsSwapping(false)
