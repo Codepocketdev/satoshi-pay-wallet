@@ -6,11 +6,17 @@ import { vibrate } from '../utils/cashu.js'
 export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => {
   const [pendingTokens, setPendingTokens] = useState([])
 
+  // Load pending tokens from Dexie on mount
   useEffect(() => {
-    // 🔥 FIX: Add async/await
     const loadTokens = async () => {
-      const tokens = await loadPendingTokens()
-      setPendingTokens(tokens)
+      try {
+        const tokens = await loadPendingTokens()
+        console.log('✅ Loaded pending tokens from Dexie:', tokens.length)
+        setPendingTokens(tokens)
+      } catch (err) {
+        console.error('Failed to load pending tokens:', err)
+        setPendingTokens([])
+      }
     }
     loadTokens()
   }, [])
@@ -44,6 +50,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
 
             const updated = pendingTokens.filter(t => t.id !== pending.id)
             setPendingTokens(updated)
+            localStorage.setItem('pending_tokens_cache', JSON.stringify(updated)) 
             // 🔥 FIX: Add await
             await savePendingTokens(updated)
 
@@ -75,6 +82,8 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
     }
     const updated = [pending, ...pendingTokens]
     setPendingTokens(updated)
+    localStorage.setItem('pending_tokens_cache', JSON.stringify(updated))
+    console.log('💾 Saving pending tokens:', updated.length, updated)
     // 🔥 FIX: Add await
     await savePendingTokens(updated)
   }
@@ -83,6 +92,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
     if (confirm('Delete this token? This cannot be undone.')) {
       const updated = pendingTokens.filter(t => t.id !== tokenId)
       setPendingTokens(updated)
+      localStorage.setItem('pending_tokens_cache', JSON.stringify(updated)) 
       // 🔥 FIX: Add await
       await savePendingTokens(updated)
     }
@@ -135,6 +145,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
 
       const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
       setPendingTokens(updated)
+      localStorage.setItem('pending_tokens_cache', JSON.stringify(updated)) 
       await savePendingTokens(updated)
 
       vibrate([200])
@@ -148,6 +159,7 @@ export const usePendingTokens = (wallet, bip39Seed, updateTransactionStatus) => 
       setError('Token already claimed by recipient')
       const updated = pendingTokens.filter(t => t.id !== pendingToken.id)
       setPendingTokens(updated)
+      localStorage.setItem('pending_tokens_cache', JSON.stringify(updated)) 
       await savePendingTokens(updated)
     } else {
       setError(`Could not reclaim: ${err.message}`)

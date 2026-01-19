@@ -132,7 +132,7 @@ export default function SendViaNostr({
     console.log('Sending token via Nostr...')
     await sendNostrToken(nsec, recipientNpub, token, message)
     
-    const txId = addTransaction('send', amount, `Sent to ${formatPubkey(recipientNpub)} via Nostr`, mintUrl, 'pending')
+    const txId = await addTransaction('send', amount, `Sent to ${formatPubkey(recipientNpub)} via Nostr`, mintUrl, 'pending')
     addPendingToken(token, amount, mintUrl, proofsToSend, txId)
 
     setSuccess('✅ Token sent via Nostr DM!')

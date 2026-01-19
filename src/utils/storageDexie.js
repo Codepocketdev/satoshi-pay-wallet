@@ -88,31 +88,31 @@ export const addTransaction = async (transactions, type, amount, note, mintUrl, 
     mint: mintUrl,
     status
   }
-
+  
   try {
     await db.transactions.put(newTx)
-    return [newTx, ...transactions]  // <-- CHANGE THIS LINE
+    return [...transactions, newTx]
   } catch (err) {
     console.error('Error adding transaction to Dexie:', err)
-    return [newTx, ...transactions]  // <-- CHANGE THIS LINE TOO
+    return [...transactions, newTx]
   }
 }
 
-// 🔥 PENDING TOKENS STORAGE (localStorage for instant access!)
+// 🔥 PENDING TOKENS STORAGE (Dexie)
 export const savePendingTokens = async (tokens) => {
   try {
-    localStorage.setItem('pending_tokens', JSON.stringify(tokens))
+    await db.pendingTokens.clear()
+    await db.pendingTokens.bulkPut(tokens)
   } catch (err) {
-    console.error('Error saving pending tokens:', err)
+    console.error('Error saving pending tokens to Dexie:', err)
   }
 }
 
 export const loadPendingTokens = async () => {
   try {
-    const saved = localStorage.getItem('pending_tokens')
-    return saved ? JSON.parse(saved) : []
+    return await db.pendingTokens.toArray()
   } catch (err) {
-    console.error('Error loading pending tokens:', err)
+    console.error('Error loading pending tokens from Dexie:', err)
     return []
   }
 }

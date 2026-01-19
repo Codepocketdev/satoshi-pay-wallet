@@ -121,8 +121,8 @@ export default function MintSwap({
       await saveProofs(toMint.url, [...existingToProofs, ...newProofs])
 
 
-      addTransaction('send', amount, `Swap to ${toMint.name}`, fromMint.url, 'paid')
-      addTransaction('receive', amount, `Swap from ${fromMint.name}`, toMint.url, 'paid')
+      await addTransaction('send', amount, `Swap to ${toMint.name}`, fromMint.url, 'paid')
+      await addTransaction('receive', amount, `Swap from ${fromMint.name}`, toMint.url, 'paid')
 
       setSuccess(`Swapped ${amount} sats from ${fromMint.name} to ${toMint.name}!`)
       vibrate([200])

@@ -5,13 +5,14 @@ import './App.css'
 
 import { useWallet } from './hooks/useWallet.js'
 import { usePendingTokens } from './hooks/usePendingTokens.js'
+import { useMintQuoteProcessor } from './hooks/useMintQuoteProcessor.js'
+import { migrateToDexie } from './utils/migrateToDexie.js'
 
 import { generateQR, vibrate, WALLET_NAME } from './utils/cashu.js'
 import {
-  savePendingQuote,
-  getPendingQuote,
-  clearPendingQuote
-} from './utils/storage.js'
+  saveMintQuote,
+  deleteMintQuote
+} from './utils/mintQuoteRepository.js'
 
 import {
   getBTCPrice,
@@ -79,6 +80,24 @@ function App() {
     reclaimPendingToken
   } = usePendingTokens(wallet, bip39Seed, updateTransactionStatus)
 
+  // 🔥 NEW: Mint quote processor hook - handles all pending mint quotes
+  useMintQuoteProcessor({
+    bip39Seed,
+    getProofs,
+    saveProofs,
+    calculateAllBalances,
+    addTransaction,
+    setSuccess,
+    setError,
+    onQuotePaid: () => {
+      // Clear invoice UI when paid
+      setLightningInvoice('')
+      setLightningInvoiceQR('')
+      setCurrentQuote(null)
+      setMintAmount('')
+    }
+  })
+
   const [showSendPage, setShowSendPage] = useState(false)
   const [showReceivePage, setShowReceivePage] = useState(false)
   const [showHistoryPage, setShowHistoryPage] = useState(false)
@@ -98,6 +117,22 @@ function App() {
   const [btcPrice, setBtcPrice] = useState(null)
   const [displayMode, setDisplayModeState] = useState(getDisplayMode())
   const [selectedCurrency, setSelectedCurrency] = useState(getSelectedCurrency())
+
+  // Run migration on app start
+  useEffect(() => {
+    const runMigration = async () => {
+      try {
+        const result = await migrateToDexie()
+        if (result.success && !result.alreadyMigrated) {
+          console.log('✅ Migration completed:', result.counts)
+        }
+      } catch (err) {
+        console.error('❌ Migration error:', err)
+      }
+    }
+
+    runMigration()
+  }, [])
 
   useEffect(() => {
     const fetchPrice = async () => {
@@ -152,110 +187,6 @@ function App() {
     }
   }
 
-  // Adaptive polling for mint quotes (like Boardwalk!)
-  useEffect(() => {
-    const ONE_SECOND = 1000
-    const FIVE_SECONDS = 5000
-    const THIRTY_SECONDS = 30000
-    const ONE_MINUTE = 60000
-    const FIVE_MINUTES = 5 * ONE_MINUTE
-    const TEN_MINUTES = 10 * ONE_MINUTE
-    const ONE_HOUR = 60 * ONE_MINUTE
-
-    const getPollingInterval = (createdTimestamp) => {
-      const ageMs = Date.now() - createdTimestamp
-      
-      if (ageMs < FIVE_MINUTES) {
-        return ONE_SECOND  // Super fast for first 5 minutes
-      }
-      if (ageMs < TEN_MINUTES) {
-        return FIVE_SECONDS  // Slower after 5 minutes
-      }
-      if (ageMs < ONE_HOUR) {
-        return THIRTY_SECONDS  // Even slower after 10 minutes
-      }
-      return ONE_MINUTE  // Very slow after 1 hour
-    }
-
-    const checkPendingQuotes = async () => {
-      const pending = await getPendingQuote()
-      if (!pending) return
-
-      if (Date.now() - pending.timestamp > ONE_HOUR) {
-        await clearPendingQuote()
-        setLightningInvoice('')
-        setLightningInvoiceQR('')
-        setCurrentQuote(null)
-        setMintAmount('')
-        return
-      }
-
-      try {
-        const mint = new CashuMint(pending.mintUrl)
-        const tempWallet = new CashuWallet(mint, { bip39seed: bip39Seed })
-
-        const mintQuote = await tempWallet.mint.checkMintQuote(pending.quote)
-
-        console.log('✅ Quote status:', mintQuote.state)
-
-        if (mintQuote.state !== 'PAID') {
-          console.log('⏳ Quote not paid yet, state:', mintQuote.state)
-          return false
-        }
-
-        console.log('🔨 Minting proofs for amount:', pending.amount)
-        const proofs = await tempWallet.mintProofs(
-          pending.amount,
-          mintQuote.quote
-        )
-
-        console.log('✅ Minted proofs:', proofs.length)
-
-        if (proofs && proofs.length > 0) {
-          const existingProofs = await getProofs(pending.mintUrl)
-          const allProofs = [...existingProofs, ...proofs]
-          await saveProofs(pending.mintUrl, allProofs)
-          await calculateAllBalances()
-          await addTransaction('receive', pending.amount, 'Minted via Lightning', pending.mintUrl)
-          await clearPendingQuote()
-          vibrate([200])
-          setSuccess(`✅ Received ${pending.amount} sats!`)
-          setLightningInvoice('')
-          setLightningInvoiceQR('')
-          setCurrentQuote(null)
-          setMintAmount('')
-          setTimeout(() => setSuccess(''), 2000)
-          return true
-        }
-      } catch (err) {
-        console.error('❌ Mint error:', err)
-        if (err.message?.includes('not paid') || err.message?.includes('pending')) {
-          return false
-        }
-        return false
-      }
-    }
-
-    let timeoutId = null
-
-    const poll = async () => {
-      const pending = await getPendingQuote()
-      if (!pending) return
-
-      await checkPendingQuotes()
-      
-      const interval = getPollingInterval(pending.timestamp)
-      console.log(`⏱️ Next check in ${interval}ms`)
-      timeoutId = setTimeout(poll, interval)
-    }
-
-    poll()
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [wallet, allMints, bip39Seed, getProofs, saveProofs, calculateAllBalances, addTransaction])
-
   const handleScan = async (data) => {
     setShowScanner(false)
     try {
@@ -302,6 +233,7 @@ function App() {
     }
   }
 
+  // 🔥 UPDATED: handleMint with proper quote persistence
   const handleMint = async () => {
     if (!wallet || !mintAmount) return
 
@@ -317,11 +249,21 @@ function App() {
 
       console.log('✅ Mint quote created:', mintQuote)
 
+      // 🔥 Save to database immediately
+      await saveMintQuote({
+        quote: mintQuote.quote,
+        request: mintQuote.request,
+        amount: amount,
+        mintUrl: mintUrl,
+        state: 'UNPAID'
+      })
+
       setLightningInvoice(mintQuote.request)
       setCurrentQuote(mintQuote)
-      savePendingQuote(mintQuote.quote, amount, mintUrl)
+      
       const qr = await generateQR(mintQuote.request)
       setLightningInvoiceQR(qr)
+      
       setSuccess('Invoice created! Checking for payment...')
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
@@ -332,8 +274,13 @@ function App() {
     }
   }
 
+  // 🔥 UPDATED: handleCancelMint with proper cleanup
   const handleCancelMint = async () => {
-    await clearPendingQuote()
+    if (currentQuote) {
+      // Delete from database when user cancels
+      await deleteMintQuote(currentQuote.quote)
+    }
+    
     setLightningInvoice('')
     setLightningInvoiceQR('')
     setCurrentQuote(null)
@@ -457,6 +404,13 @@ function App() {
         setLoading={setLoading}
         onClose={() => { setShowReceivePage(false); setScannedData(null); calculateAllBalances() }}
         onScanRequest={(mode) => { setScanMode(mode); setShowScanner(true) }}
+        totalBalance={totalBalance}
+        onNavigate={(page) => {
+          setShowReceivePage(false)
+          if (page === 'p2pk-settings') {
+            setShowMintSettings(true)
+          }
+        }}
       />
     )
   }
@@ -539,9 +493,9 @@ function App() {
         )}
       </div>
 
-      {pendingTokens.length > 0 && (
+      {(pendingTokens.length > 0 || parseInt(localStorage.getItem('pending_tokens_count') || '0') > 0) && (
         <button className="history-btn" onClick={() => setShowPendingTokens(true)} style={{ background: 'rgba(255, 140, 0, 0.1)', borderColor: '#FF8C00', marginBottom: '0.5em' }}>
-          <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Pending Tokens ({pendingTokens.length})
+          <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Pending Tokens ({pendingTokens.length || parseInt(localStorage.getItem('pending_tokens_count') || '0')})
         </button>
       )}
 

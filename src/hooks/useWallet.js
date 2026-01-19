@@ -334,10 +334,12 @@ export const useWallet = () => {
   }
 
   const addTransaction = async (type, amount, note, mint, status = 'paid') => {
-    const { transactions: updated, txId } = addTx(transactions, type, amount, note, mint || mintUrl, status)
+    // Load fresh transactions from Dexie to avoid stale state
+    const currentTxs = await loadTransactions()
+    const updated = await addTx(currentTxs, type, amount, note, mint || mintUrl, status)
     setTransactions(updated)
     await saveTransactions(updated)
-    return txId
+    return updated[updated.length - 1]?.id
   }
 
   const updateTransactionStatus = async (txId, newStatus) => {
