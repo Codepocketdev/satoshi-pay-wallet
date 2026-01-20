@@ -22,6 +22,7 @@ export default function ReceivePage({
   saveProofs,
   calculateAllBalances,
   addTransaction,
+  onAddMint,
   scannedData,
   error,
   success,
@@ -325,7 +326,13 @@ const handleReceiveLightning = async (token) => {
       const hasMint = allMints.some(m => m.url === detectedMintUrl)
 
       if (!hasMint) {
-        console.log('Mint not in list, attempting to receive anyway...')
+        const mintName = detectedMintUrl.replace('https://', '').replace('http://', '')
+        
+        // Auto-add the mint to the wallet
+        onAddMint(mintName, detectedMintUrl)
+        
+        setSuccess(`New mint detected: ${mintName}\nAuto-added to your wallet!`)
+        setTimeout(() => setSuccess(''), 4000)
       }
 
       const targetMint = new CashuMint(detectedMintUrl)

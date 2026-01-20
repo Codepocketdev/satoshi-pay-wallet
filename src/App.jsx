@@ -387,6 +387,7 @@ function App() {
         saveProofs={saveProofs}
         calculateAllBalances={calculateAllBalances}
         addTransaction={addTransaction}
+        onAddMint={addCustomMint}
         mintAmount={mintAmount}
         setMintAmount={setMintAmount}
         lightningInvoice={lightningInvoice}
