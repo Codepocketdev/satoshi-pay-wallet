@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Copy, QrCode, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, QrCode, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { useNpubcash } from '../hooks/useNpubcash.js'
 import { getLightningAddress } from '../utils/npubcash.js'
+import { generateQR } from '../utils/cashu.js'
 
 export default function ReceiveLightning({
   onNavigate,
@@ -12,6 +13,8 @@ export default function ReceiveLightning({
 }) {
   const [showCustomAddressInfo, setShowCustomAddressInfo] = useState(false)
   const [showClaimedTokens, setShowClaimedTokens] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [lightningAddress, setLightningAddress] = useState('')
   const [npubcashEnabled, setNpubcashEnabled] = useState(false)
 
@@ -50,6 +53,15 @@ export default function ReceiveLightning({
       await navigator.clipboard.writeText(addr)
       setSuccess('Address copied!')
       setTimeout(() => setSuccess(''), 2000)
+    }
+  }
+
+  const handleShowQR = async () => {
+    const addr = lightningAddress || npubcash.lightningAddress
+    if (addr) {
+      const qrUrl = await generateQR(addr)
+      setQrCodeUrl(qrUrl)
+      setShowQR(true)
     }
   }
 
@@ -133,7 +145,7 @@ export default function ReceiveLightning({
         <button
           className="secondary-btn"
           style={{ flex: 1 }}
-          onClick={() => setError('QR code coming soon!')}
+          onClick={handleShowQR}
         >
           <QrCode size={16} style={{ marginRight: '0.3em' }} />
           QR Code
@@ -296,6 +308,93 @@ export default function ReceiveLightning({
       <p style={{ fontSize: '0.75em', opacity: 0.5, textAlign: 'center', marginTop: '1em' }}>
         Powered by npub.cash
       </p>
+
+      {/* QR Code Modal */}
+      {showQR && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1em'
+          }}
+          onClick={() => setShowQR(false)}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              padding: '1.5em',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQR(false)}
+              style={{
+                position: 'absolute',
+                top: '0.5em',
+                right: '0.5em',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0.5em'
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <h3 style={{ marginTop: 0, textAlign: 'center', color: '#FF8C00' }}>
+              Lightning Address QR
+            </h3>
+
+            <div style={{ textAlign: 'center', marginBottom: '1em' }}>
+              <img
+                src={qrCodeUrl}
+                alt="Lightning Address QR Code"
+                style={{
+                  width: '100%',
+                  maxWidth: '300px',
+                  height: 'auto',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255, 140, 0, 0.1)',
+                padding: '0.8em',
+                borderRadius: '8px',
+                wordBreak: 'break-all',
+                fontSize: '0.85em',
+                textAlign: 'center',
+                marginBottom: '1em'
+              }}
+            >
+              {lightningAddress || npubcash.lightningAddress}
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={() => setShowQR(false)}
+              style={{ width: '100%' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

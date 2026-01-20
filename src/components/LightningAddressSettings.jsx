@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Copy, QrCode, Settings } from 'lucide-react'
+import { Copy, QrCode, Settings, X } from 'lucide-react'
 import { getLightningAddress } from '../utils/npubcash.js'
+import { generateQR } from '../utils/cashu.js'
 
 export default function LightningAddressSettings({ onBack, setSuccess, setError }) {
   const [enabled, setEnabled] = useState(false)
   const [autoClaim, setAutoClaim] = useState(true)
   const [lightningAddress, setLightningAddress] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
 
   // Get nsec from localStorage
   const nsec = typeof window !== 'undefined' ? localStorage.getItem('nostr_nsec') : null
@@ -74,13 +77,21 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
     }
   }
 
+  const handleShowQR = async () => {
+    if (lightningAddress) {
+      const qrUrl = await generateQR(lightningAddress)
+      setQrCodeUrl(qrUrl)
+      setShowQR(true)
+    }
+  }
+
   // No Nostr keys configured
   if (!nsec) {
     return (
       <div>
         <button className="back-btn" onClick={onBack}>← Back</button>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
-          <Settings size={24} /> Lightning Address Settings
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5em', color: '#FF8C00' }}>
+          <Settings size={24} color="#FF8C00" /> Lightning Address Settings
         </h2>
 
         <div className="card">
@@ -96,8 +107,8 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
   return (
     <div>
       <button className="back-btn" onClick={onBack}>← Back</button>
-      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
-        <Settings size={24} /> Lightning Address Settings
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5em', color: '#FF8C00' }}>
+        <Settings size={24} color="#FF8C00" /> Lightning Address Settings
       </h2>
 
       {/* Enable/Disable Toggle */}
@@ -169,7 +180,7 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
               <Copy size={16} style={{ marginRight: '0.3em' }} />
               Copy
             </button>
-            <button className="secondary-btn" style={{ flex: 1 }} onClick={() => setError('QR code coming soon!')}>
+            <button className="secondary-btn" style={{ flex: 1 }} onClick={handleShowQR}>
               <QrCode size={16} style={{ marginRight: '0.3em' }} />
               QR Code
             </button>
@@ -238,6 +249,93 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
           {' '}to register.
         </p>
       </div>
+
+      {/* QR Code Modal */}
+      {showQR && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1em'
+          }}
+          onClick={() => setShowQR(false)}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              padding: '1.5em',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQR(false)}
+              style={{
+                position: 'absolute',
+                top: '0.5em',
+                right: '0.5em',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0.5em'
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <h3 style={{ marginTop: 0, textAlign: 'center', color: '#FF8C00' }}>
+              Lightning Address QR
+            </h3>
+
+            <div style={{ textAlign: 'center', marginBottom: '1em' }}>
+              <img
+                src={qrCodeUrl}
+                alt="Lightning Address QR Code"
+                style={{
+                  width: '100%',
+                  maxWidth: '300px',
+                  height: 'auto',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255, 140, 0, 0.1)',
+                padding: '0.8em',
+                borderRadius: '8px',
+                wordBreak: 'break-all',
+                fontSize: '0.85em',
+                textAlign: 'center',
+                marginBottom: '1em'
+              }}
+            >
+              {lightningAddress}
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={() => setShowQR(false)}
+              style={{ width: '100%' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
