@@ -191,3 +191,44 @@ export function formatPubkey(npub) {
   return `${npub.slice(0, 12)}...${npub.slice(-8)}`
 }
 
+// Generate NIP-98 HTTP Auth token
+export async function generateNip98Token(nsec, url, method = 'GET', body = null) {
+  try {
+    const secretKey = decodeNsec(nsec)
+    const publicKey = getPublicKey(secretKey)
+
+    // Create NIP-98 event
+    const event = {
+      kind: 27235,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['u', url],
+        ['method', method]
+      ],
+      content: '',
+      pubkey: publicKey
+    }
+
+    // Add payload hash for POST requests
+    if (body && method === 'POST') {
+      const encoder = new TextEncoder()
+      const data = encoder.encode(JSON.stringify(body))
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+      event.tags.push(['payload', hashHex])
+    }
+
+    // Sign the event
+    const signedEvent = finalizeEvent(event, secretKey)
+
+    // Encode as base64
+    const eventJson = JSON.stringify(signedEvent)
+    const eventBase64 = btoa(eventJson)
+
+    return eventBase64
+  } catch (err) {
+    console.error('Failed to generate NIP-98 token:', err)
+    throw err
+  }
+}

@@ -7,6 +7,7 @@ import { CURRENCIES, getSelectedCurrency, setSelectedCurrency } from '../utils/p
 import NostrSettings from './NostrSettings.jsx'
 import P2PKSettings from './P2PKSettings.jsx'
 import MintSwap from './MintSwap.jsx'
+import LightningAddressSettings from './LightningAddressSettings.jsx'
 
 export default function SettingsPage({
   allMints,
@@ -44,6 +45,7 @@ export default function SettingsPage({
   const [showNostrSettings, setShowNostrSettings] = useState(false)
   const [showP2PKSettings, setShowP2PKSettings] = useState(false)
   const [showSwap, setShowSwap] = useState(false)
+  const [showLightningSettings, setShowLightningSettings] = useState(false) 
   const [selectedCurr, setSelectedCurr] = useState(getSelectedCurrency())
 
   const handleAddMint = () => {
@@ -125,6 +127,16 @@ export default function SettingsPage({
     return (
       <NostrSettings
         onClose={() => setShowNostrSettings(false)}
+      />
+    )
+  }
+
+  if (showLightningSettings) {
+    return (
+      <LightningAddressSettings
+        onBack={() => setShowLightningSettings(false)}
+        setSuccess={setSuccess}
+        setError={setError}
       />
     )
   }
@@ -278,9 +290,31 @@ export default function SettingsPage({
             <div style={{ fontWeight: 'bold' }}>P2PK Keys</div>
             <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Secure payments with locked ecash</div>
           </div>
+          
         </button>
-      </div>
 
+        <button
+          className="settings-btn"
+          onClick={() => setShowLightningSettings(true)}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #FF8C00 0%, #FFA500 100%)',
+            borderColor: '#FF8C00',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1em',
+            padding: '1em',
+            marginTop: '0.5em'
+          }}
+        >
+          <span style={{ fontSize: '1.5em' }}>⚡</span>
+          <div style={{ textAlign: 'left', flex: 1 }}>
+            <div style={{ fontWeight: 'bold' }}>Lightning Address</div>
+            <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Receive via npub.cash</div>
+          </div>
+        </button>
+      </div>  
+        
       <div className="card">
         <h3>Select Mint</h3>
         <p style={{ fontSize: '0.85em', marginBottom: '1em', opacity: 0.7 }}>

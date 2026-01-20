@@ -11,6 +11,7 @@ import {
   setPrivateKeyUsed
 } from '../utils/p2pk.js'
 import P2PKKeyPage from './P2PKKeyPage.jsx'
+import ReceiveLightning from './ReceiveLightning.jsx'
 
 export default function ReceivePage({
   wallet,
@@ -34,6 +35,7 @@ export default function ReceivePage({
 }) {
   const [receiveMethod, setReceiveMethod] = useState(null)
   const [receiveToken, setReceiveToken] = useState('')
+  const [lightningToken, setLightningToken] = useState('')
   const [showP2PKQuickAccess, setShowP2PKQuickAccess] = useState(false)
   const [p2pkKeys, setP2pkKeys] = useState([])
   const [tokenLockStatus, setTokenLockStatus] = useState(null)
@@ -170,6 +172,82 @@ export default function ReceivePage({
     setError('')
     setSuccess('')
     setTokenLockStatus(null)
+  }
+
+const handleReceiveLightning = async (token) => {
+    // Separate handler for Lightning Address tokens - doesn't use textarea state
+    if (!token) return
+
+    const tokenString = typeof token === 'string' ? token : String(token)
+
+    try {
+      setLoading(true)
+      setError('')
+
+      const cleanToken = tokenString.trim()
+      let tokenToDecode = cleanToken
+      
+      if (tokenToDecode.toLowerCase().startsWith('cashu')) {
+        if (tokenToDecode.startsWith('cashu:')) {
+          tokenToDecode = tokenToDecode.substring(6)
+          if (tokenToDecode.startsWith('//')) {
+            tokenToDecode = tokenToDecode.substring(2)
+          }
+        } else {
+          tokenToDecode = tokenToDecode.substring(5)
+        }
+      }
+
+      const decoded = getDecodedToken(tokenToDecode)
+      
+      let mintUrl, proofs
+      if (decoded.token && Array.isArray(decoded.token)) {
+        mintUrl = decoded.token[0]?.mint
+        proofs = decoded.token[0]?.proofs
+      } else if (decoded.mint && decoded.proofs) {
+        mintUrl = decoded.mint
+        proofs = decoded.proofs
+      } else if (Array.isArray(decoded)) {
+        mintUrl = decoded[0]?.mint
+        proofs = decoded[0]?.proofs
+      }
+
+      if (!mintUrl || !proofs || proofs.length === 0) {
+        throw new Error('Invalid token from Lightning Address')
+      }
+
+      const targetMint = new CashuMint(mintUrl)
+      const targetWallet = new CashuWallet(targetMint, { bip39seed: bip39Seed })
+      const existingProofs = await getProofs(mintUrl)
+
+      const receivedProofs = await targetWallet.receive(tokenToDecode, {
+        counter: 0,
+        proofsWeHave: existingProofs
+      })
+
+      if (!receivedProofs || receivedProofs.length === 0) {
+        throw new Error('Token already claimed')
+      }
+
+      const savedProofs = await getProofs(mintUrl)
+      const allProofs = [...savedProofs, ...receivedProofs]
+      await saveProofs(mintUrl, allProofs.filter(p => p && p.amount))
+
+      calculateAllBalances()
+
+      const amount = receivedProofs.reduce((sum, p) => sum + (p.amount || 0), 0)
+      addTransaction('receive', amount, 'Lightning Address payment', mintUrl)
+      vibrate([200])
+
+      setSuccess(`⚡ Received ${amount} sats via Lightning!`)
+      setLightningToken('')
+
+    } catch (err) {
+      console.error('Lightning receive error:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleReceiveEcash = async () => {
@@ -509,11 +587,17 @@ export default function ReceivePage({
         </div>
       ) : (
         <div className="card">
-          <h3>⚡ Receive Lightning</h3>
-          <p style={{ fontSize: '0.9em', marginBottom: '1em', opacity: 0.7 }}>
-            Use "Get Tokens" on the main page.
-          </p>
-          <button className="back-btn" style={{ position: 'relative', left: 0, transform: 'none' }} onClick={resetReceivePage}>
+          <ReceiveLightning
+            onNavigate={onNavigate}
+            onClose={onClose}
+            onTokenReceived={(token) => {
+              setLightningToken(token)
+              handleReceiveLightning(token)
+            }}
+            setSuccess={setSuccess}
+            setError={setError}
+          />
+          <button className="back-btn" style={{ marginTop: '1em', position: 'relative', left: 0, transform: 'none' }} onClick={resetReceivePage}>
             ← Change Method
           </button>
         </div>
