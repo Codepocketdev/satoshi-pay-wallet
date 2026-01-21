@@ -42,6 +42,13 @@ export default function ReceivePage({
   const [tokenLockStatus, setTokenLockStatus] = useState(null)
   const [showP2PKKeyPage, setShowP2PKKeyPage] = useState(false)
 
+  // Unknown mint handling
+  const [unknownMintToken, setUnknownMintToken] = useState(null)
+  const [unknownMintUrl, setUnknownMintUrl] = useState(null)
+  const [unknownMintName, setUnknownMintName] = useState(null)
+  const [showUnknownMintPrompt, setShowUnknownMintPrompt] = useState(false)
+  const [mintAdded, setMintAdded] = useState(false)
+
   useEffect(() => {
     const settings = getP2PKSettings()
     setShowP2PKQuickAccess(settings.showQuickAccess)
@@ -328,11 +335,13 @@ const handleReceiveLightning = async (token) => {
       if (!hasMint) {
         const mintName = detectedMintUrl.replace('https://', '').replace('http://', '')
         
-        // Auto-add the mint to the wallet
-        onAddMint(mintName, detectedMintUrl)
-        
-        setSuccess(`New mint detected: ${mintName}\nAuto-added to your wallet!`)
-        setTimeout(() => setSuccess(''), 4000)
+        // Show unknown mint prompt instead of auto-adding
+        setUnknownMintToken(cleanToken)
+        setUnknownMintUrl(detectedMintUrl)
+        setUnknownMintName(mintName)
+        setShowUnknownMintPrompt(true)
+        setLoading(false)
+        return  // Stop here and let user decide
       }
 
       const targetMint = new CashuMint(detectedMintUrl)
@@ -467,6 +476,133 @@ const handleReceiveLightning = async (token) => {
         onGoToSettings={handleGoToP2PKSettings}
         setSuccess={setSuccess}
       />
+    )
+  }
+
+  if (showUnknownMintPrompt && !mintAdded) {
+    return (
+      <div className="app">
+        <header>
+          <button className="back-btn" onClick={() => {
+            setShowUnknownMintPrompt(false)
+            setUnknownMintToken(null)
+            setUnknownMintUrl(null)
+            setUnknownMintName(null)
+          }}>← Back</button>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            Unknown Mint
+          </h1>
+        </header>
+
+        <div className="card">
+          <h3 style={{ color: '#FFA500' }}>Token from Unknown Mint</h3>
+          <p style={{ marginBottom: '1em', opacity: 0.8 }}>
+            This token is from a mint not in your wallet:
+          </p>
+          <div style={{ 
+            background: 'rgba(255, 165, 0, 0.1)', 
+            padding: '1em', 
+            borderRadius: '8px',
+            marginBottom: '1.5em',
+            wordBreak: 'break-all'
+          }}>
+            <strong>{unknownMintName}</strong>
+            <div style={{ fontSize: '0.8em', opacity: 0.7, marginTop: '0.5em' }}>
+              {unknownMintUrl}
+            </div>
+          </div>
+          
+          <p style={{ fontSize: '0.9em', marginBottom: '1.5em' }}>
+            Do you want to add this mint to your wallet?
+          </p>
+
+          <button 
+            className="primary-btn" 
+            onClick={async () => {
+              setLoading(true)
+              await onAddMint(unknownMintName, unknownMintUrl)
+              setMintAdded(true)
+              setLoading(false)
+            }}
+            disabled={loading}
+            style={{ marginBottom: '0.5em' }}
+          >
+            {loading ? 'Adding Mint...' : '✓ Trust & Add Mint'}
+          </button>
+
+          <button 
+            className="secondary-btn"
+            onClick={() => {
+              setShowUnknownMintPrompt(false)
+              setUnknownMintToken(null)
+              setUnknownMintUrl(null)
+              setUnknownMintName(null)
+              setReceiveToken('')
+            }}
+          >
+            ✗ Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+// ADD THIS ENTIRE BLOCK HERE:
+  if (showUnknownMintPrompt && mintAdded) {
+    return (
+      <div className="app">
+        <header>
+          <button className="back-btn" onClick={() => {
+            setShowUnknownMintPrompt(false)
+            setUnknownMintToken(null)
+            setUnknownMintUrl(null)
+            setUnknownMintName(null)
+            setMintAdded(false)
+          }}>← Back</button>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            ✓ Mint Added
+          </h1>
+        </header>
+
+        <div className="card">
+          <h3 style={{ color: '#4CAF50' }}>Mint Successfully Added!</h3>
+          <p style={{ marginBottom: '1em', opacity: 0.8 }}>
+            <strong>{unknownMintName}</strong> has been added to your wallet.
+          </p>
+          
+          <p style={{ fontSize: '0.9em', marginBottom: '1.5em' }}>
+            Ready to receive the token?
+          </p>
+
+          <button 
+            className="primary-btn" 
+            onClick={() => {
+              setShowUnknownMintPrompt(false)
+              setMintAdded(false)
+              setReceiveToken(unknownMintToken)
+              setReceiveMethod('ecash')
+              setTimeout(() => handleReceiveEcash(), 100)
+            }}
+            style={{ marginBottom: '0.5em' }}
+          >
+            ✓ Receive Token
+          </button>
+
+          <button 
+            className="secondary-btn"
+            onClick={() => {
+              setShowUnknownMintPrompt(false)
+              setUnknownMintToken(null)
+              setUnknownMintUrl(null)
+              setUnknownMintName(null)
+              setMintAdded(false)
+              setReceiveToken('')
+            }}
+          >
+            ✗ Cancel
+          </button>
+        </div>
+      </div>
     )
   }
 
