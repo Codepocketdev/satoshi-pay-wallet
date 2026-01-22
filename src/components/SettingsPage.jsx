@@ -8,6 +8,7 @@ import NostrSettings from './NostrSettings.jsx'
 import P2PKSettings from './P2PKSettings.jsx'
 import MintSwap from './MintSwap.jsx'
 import LightningAddressSettings from './LightningAddressSettings.jsx'
+import MintDiscovery from './MintDiscovery.jsx'
 
 export default function SettingsPage({
   allMints,
@@ -47,6 +48,7 @@ export default function SettingsPage({
   const [showSwap, setShowSwap] = useState(false)
   const [showLightningSettings, setShowLightningSettings] = useState(false) 
   const [selectedCurr, setSelectedCurr] = useState(getSelectedCurrency())
+  const [showMintDiscovery, setShowMintDiscovery] = useState(false)
 
   const handleAddMint = () => {
     const addMintFn = addCustomMint || onAddMint
@@ -156,6 +158,16 @@ export default function SettingsPage({
         onBack={() => setShowSwap(false)}
         setError={setError}
         setSuccess={setSuccess}
+      />
+    )
+  }
+
+  if (showMintDiscovery) {
+    return (
+      <MintDiscovery
+        onAddMint={addCustomMint}
+        allMints={allMints}
+        onClose={() => setShowMintDiscovery(false)}
       />
     )
   }
@@ -361,9 +373,17 @@ export default function SettingsPage({
           + Add Mint
         </button>
 
-        <button 
-          className="secondary-btn" 
-          onClick={() => setShowSwap(true)} 
+        <button
+          className="secondary-btn"
+          onClick={() => setShowMintDiscovery(true)}
+          style={{ marginTop: '0.5em' }}
+        >
+           Discover Mints
+        </button>
+
+        <button
+          className="secondary-btn"
+          onClick={() => setShowSwap(true)}
           style={{ 
             marginTop: '0.5em',
             display: 'flex',
