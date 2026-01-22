@@ -3,6 +3,7 @@ import { getEncodedToken } from '@cashu/cashu-ts'
 import { Wallet, Copy, Key } from 'lucide-react'
 import { generateQR } from '../utils/cashu.js'
 import { loadP2PKKeys, maybeConvertNpub, isValidPubkey } from '../utils/p2pk.js'
+import AnimatedQRCode from './AnimatedQRCode.jsx'
 
 export default function SendViaEcash({
   wallet,
@@ -21,7 +22,6 @@ export default function SendViaEcash({
 }) {
   const [sendAmount, setSendAmount] = useState('')
   const [generatedToken, setGeneratedToken] = useState('')
-  const [generatedQR, setGeneratedQR] = useState('')
   const [lockToPubkey, setLockToPubkey] = useState('')
   const [showP2PKOption, setShowP2PKOption] = useState(false)
 
@@ -110,9 +110,7 @@ const token = getEncodedToken({
 
 console.log('Generated token:', token.substring(0, 50) + '...')
 
-      const qr = await generateQR(token)
       setGeneratedToken(token)
-      setGeneratedQR(qr)
 
       const txNote = isP2PKLocked 
         ? `P2PK-locked ecash generated (${lockToPubkey.substring(0, 16)}...)`
@@ -379,11 +377,9 @@ console.log('Generated token:', token.substring(0, 50) + '...')
             </div>
           )}
 
-          {generatedQR && (
-            <div style={{ textAlign: 'center', marginBottom: '1em' }}>
-              <img src={generatedQR} alt="QR Code" style={{ maxWidth: '280px', width: '100%', borderRadius: '8px' }} />
-            </div>
-          )}
+           <div style={{ marginBottom: '1em' }}>
+            <AnimatedQRCode data={generatedToken} size={280} />
+          </div>
           <div className="token-box">
             <textarea
               readOnly
