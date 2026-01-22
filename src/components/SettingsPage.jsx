@@ -20,6 +20,7 @@ export default function SettingsPage({
   addCustomMint,
   removeCustomMint,
   resetMint,
+  setShowTerms,
   onShowSeedBackup,
   onShowRestoreWallet,
   onBack,
@@ -433,6 +434,29 @@ export default function SettingsPage({
         >
           Reset Current Mint ({currentMintBalance} sats)
         </button>
+      </div>
+
+      {/* Terms of Service - Hidden at the bottom */}
+      <div style={{ 
+        textAlign: 'center', 
+        marginTop: '2em', 
+        paddingTop: '1em',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        opacity: 0.5,
+        fontSize: '0.8em'
+      }}>
+        <a 
+          href="#"
+          onClick={(e) => { e.preventDefault(); setShowTerms(true); }}
+          style={{ 
+            color: '#888',
+            textDecoration: 'none'
+          }}
+          onMouseOver={(e) => e.target.style.color = '#FF8C00'}
+          onMouseOut={(e) => e.target.style.color = '#888'}
+        >
+          Terms of Service
+        </a>
       </div>
     </div>
   )

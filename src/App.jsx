@@ -9,6 +9,7 @@ import { useMintQuoteProcessor } from './hooks/useMintQuoteProcessor.js'
 import { migrateToDexie } from './utils/migrateToDexie.js'
 
 import { generateQR, vibrate, WALLET_NAME } from './utils/cashu.js'
+import TermsPage from './components/TermsPage.jsx'
 import {
   saveMintQuote,
   deleteMintQuote
@@ -107,6 +108,7 @@ function App() {
 
   const [showScanner, setShowScanner] = useState(false)
   const [scanMode, setScanMode] = useState(null)
+  const [showTerms, setShowTerms] = useState(false)
   const [scannedData, setScannedData] = useState(null)
 
   const [mintAmount, setMintAmount] = useState('')
@@ -317,6 +319,10 @@ function App() {
   if (showPendingTokens) return <PendingTokens pendingTokens={pendingTokens} onReclaim={(pending) => reclaimPendingToken(pending, getProofs, saveProofs, calculateAllBalances, setError, setSuccess, setLoading)} onCopy={(token) => copyToClipboard(token, 'Token')} onRemove={removePendingToken} onClose={() => setShowPendingTokens(false)} />
   if (showHistoryPage) return <HistoryPage transactions={transactions} totalBalance={totalBalance} onClose={() => { setShowHistoryPage(false); calculateAllBalances() }} />
 
+  if (showTerms) {
+    return <TermsPage onBack={() => setShowTerms(false)} />
+  }
+
   if (showMintSettings) {
     return (
       <SettingsPage
@@ -328,6 +334,7 @@ function App() {
         addCustomMint={addCustomMint}
         removeCustomMint={removeCustomMint}
         resetMint={handleResetMint}
+        setShowTerms={setShowTerms}
         onShowSeedBackup={() => {
           const currentSeed = localStorage.getItem('wallet_seed')
           if (currentSeed && currentSeed !== seedPhrase) setSeedPhrase(currentSeed)
