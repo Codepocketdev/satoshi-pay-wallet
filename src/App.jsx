@@ -6,6 +6,7 @@ import './App.css'
 import { useWallet } from './hooks/useWallet.js'
 import { usePendingTokens } from './hooks/usePendingTokens.js'
 import { useMintQuoteProcessor } from './hooks/useMintQuoteProcessor.js'
+import { nwcStore } from './utils/nwcStore'
 import { migrateToDexie } from './utils/migrateToDexie.js'
 
 import { generateQR, vibrate, WALLET_NAME } from './utils/cashu.js'
@@ -164,7 +165,34 @@ function App() {
     }
   }, [])
 
-  const toggleDisplayMode = () => {
+  // Start NWC listening if enabled
+  useEffect(() => {
+    if (wallet && masterKey) {
+      const conn = nwcStore.getConnection()
+      
+      if (conn?.enabled) {
+        const walletFunctions = {
+          getBalance: async () => totalBalance,
+          payInvoice: async (bolt11) => {
+            console.log('NWC payment requested:', bolt11)
+            return { amount: 0, preimage: '' }
+          },
+          makeInvoice: async (amountSats) => {
+            const mintQuote = await wallet.mint.createMintQuote({
+              amount: amountSats,
+              unit: 'sat'
+            })
+            return mintQuote.request
+          }
+        }
+        
+        nwcStore.startListening(walletFunctions)
+        console.log('✅ NWC listening started')
+      }
+    }
+  }, [wallet, masterKey, totalBalance])
+
+    const toggleDisplayMode = () => {
     const newMode = displayMode === 'sats' ? 'fiat' : 'sats'
     setDisplayMode(newMode)
     setDisplayModeState(newMode)
@@ -330,6 +358,8 @@ function App() {
         mintUrl={mintUrl}
         balances={balances}
         currentMintBalance={currentMintBalance}
+        totalBalance={totalBalance}
+        calculateAllBalances={calculateAllBalances}
         setMintUrl={setMintUrl}
         addCustomMint={addCustomMint}
         removeCustomMint={removeCustomMint}

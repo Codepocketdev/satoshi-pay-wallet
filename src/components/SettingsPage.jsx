@@ -9,6 +9,7 @@ import P2PKSettings from './P2PKSettings.jsx'
 import MintSwap from './MintSwap.jsx'
 import LightningAddressSettings from './LightningAddressSettings.jsx'
 import MintDiscovery from './MintDiscovery.jsx'
+import NWCSettings from './NWCSettings'
 
 export default function SettingsPage({
   allMints,
@@ -16,6 +17,7 @@ export default function SettingsPage({
   mintUrl,
   balances,
   currentMintBalance,
+  totalBalance,
   setMintUrl,
   addCustomMint,
   removeCustomMint,
@@ -48,6 +50,7 @@ export default function SettingsPage({
   const [showP2PKSettings, setShowP2PKSettings] = useState(false)
   const [showSwap, setShowSwap] = useState(false)
   const [showLightningSettings, setShowLightningSettings] = useState(false) 
+  const [showNWC, setShowNWC] = useState(false)
   const [selectedCurr, setSelectedCurr] = useState(getSelectedCurrency())
   const [showMintDiscovery, setShowMintDiscovery] = useState(false)
 
@@ -163,6 +166,80 @@ export default function SettingsPage({
     )
   }
 
+// Wallet functions for NWC
+  const walletFunctions = {
+    getBalance: async () => {
+      return totalBalance
+    },
+    
+    payInvoice: async (bolt11) => {
+      // Import SendViaLightning logic
+      if (!wallet) throw new Error('Wallet not initialized')
+      
+      const meltQuote = await wallet.createMeltQuote(bolt11)
+      const totalAmount = meltQuote.amount + meltQuote.fee_reserve
+      
+      if (totalBalance < totalAmount) {
+        throw new Error('Insufficient balance')
+      }
+      
+      const proofs = await getProofs(mintUrl)
+      if (!proofs || proofs.length === 0) {
+        throw new Error('No proofs available')
+      }
+      
+      const sendResult = await wallet.send(totalAmount, proofs)
+      const proofsToSend = sendResult.send || sendResult.sendProofs || []
+      
+      if (!proofsToSend || proofsToSend.length === 0) {
+        throw new Error('Failed to prepare proofs')
+      }
+      
+      const meltResponse = await wallet.meltProofs(meltQuote, proofsToSend, {
+        keysetId: wallet.keys.id
+      })
+      
+      if (!meltResponse || meltResponse.quote?.state !== 'PAID') {
+        throw new Error('Payment failed')
+      }
+      
+      // Save change
+      const changeProofs = meltResponse.change || []
+      const proofsToKeep = sendResult.keep || []
+      await saveProofs(mintUrl, [...proofsToKeep, ...changeProofs])
+      await calculateAllBalances()
+      
+      addTransaction('send', meltQuote.amount, 'NWC Payment', mintUrl)
+      
+      return {
+        amount: meltQuote.amount,
+        preimage: meltResponse.payment_preimage || ''
+      }
+    },
+    
+    makeInvoice: async (amountSats, description) => {
+      if (!wallet) throw new Error('Wallet not initialized')
+      
+      const mintQuote = await wallet.mint.createMintQuote({
+        amount: amountSats,
+        unit: 'sat'
+      })
+      
+      // Save quote for auto-claim
+      await saveMintQuote({
+        quote: mintQuote.quote,
+        request: mintQuote.request,
+        amount: amountSats,
+        mintUrl: mintUrl,
+        state: 'UNPAID'
+      })
+      
+      addTransaction('receive', amountSats, description || 'NWC Invoice', mintUrl, 'pending')
+      
+      return mintQuote.request
+    }
+  }
+
   if (showMintDiscovery) {
     return (
       <MintDiscovery
@@ -173,6 +250,10 @@ export default function SettingsPage({
     )
   }
 
+  if (showNWC) {
+    return <NWCSettings onClose={() => setShowNWC(false)} walletFunctions={walletFunctions} />
+  }
+  
   return (
     <div className="app">
       <header>
@@ -326,8 +407,38 @@ export default function SettingsPage({
             <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Receive via npub.cash</div>
           </div>
         </button>
-      </div>  
         
+         {/* Nostr Wallet Connect */}
+        <button
+          className="settings-btn"
+          onClick={() => setShowNWC(true)}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #A855F7 0%, #9333EA 100%)',
+            color: 'white',
+            padding: '1em',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.8em',
+            transition: 'all 0.2s',
+            marginTop: '0.5em'
+          }}
+        >
+          <span style={{ fontSize: '1.5em' }}>⚡</span>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 'bold' }}>
+              Nostr Wallet Connect
+            </div>
+            <div style={{ fontSize: '0.75em', opacity: 0.8 }}>
+              Remote wallet control for Nostr apps 
+            </div>
+          </div>
+        </button>
+
+      </div>  
+
       <div className="card">
         <h3>Select Mint</h3>
         <p style={{ fontSize: '0.85em', marginBottom: '1em', opacity: 0.7 }}>
