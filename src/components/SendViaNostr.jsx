@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { getEncodedToken } from '@cashu/cashu-ts'
 import { Send, CheckCircle, Zap } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
+import { contactsStore } from '../utils/contactsStore'
+import ContactSelector from './ContactSelector.jsx'
 import {
   sendNostrToken,
   isValidNpub,
@@ -29,6 +31,9 @@ export default function SendViaNostr({
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [profileInfo, setProfileInfo] = useState(null)
+  const [contacts, setContacts] = useState([])
+  const [selectedContact, setSelectedContact] = useState(null)
+  const [showContactSelector, setShowContactSelector] = useState(false)
 
   const nsec = localStorage.getItem('nostr_nsec')
   const isConnected = !!nsec
@@ -42,6 +47,13 @@ export default function SendViaNostr({
       setProfileInfo(null)
     }
   }, [recipientNpub])
+
+  useEffect(() => {
+    const allContacts = contactsStore.getAllContacts()
+      .filter(c => c.nostrPubkey)
+      .sort((a, b) => b.lastUsed - a.lastUsed)
+    setContacts(allContacts)
+  }, [])
 
   const handleGenerateAndSend = async () => {
   if (!sendAmount || parseInt(sendAmount) <= 0) {
@@ -153,6 +165,21 @@ export default function SendViaNostr({
   }
 }
 
+ const handleContactSelect = (contact) => {
+    setRecipientNpub(contact.nostrPubkey)
+    setShowContactSelector(false)
+  }
+
+  if (showContactSelector) {
+    return (
+      <ContactSelector
+        onBack={() => setShowContactSelector(false)}
+        onSelect={handleContactSelect}
+        filterType="nostr"
+      />
+    )
+  }
+
   if (!isConnected) {
     return (
       <div className="card">
@@ -262,9 +289,37 @@ export default function SendViaNostr({
       </div>
 
       <div style={{ marginBottom: '1em' }}>
-        <label style={{ display: 'block', marginBottom: '0.5em', fontSize: '0.9em' }}>
-          Recipient Nostr Public Key (npub):
-        </label>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '0.5em'
+        }}>
+          <label style={{ fontSize: '0.9em' }}>
+            Recipient Nostr Public Key (npub):
+          </label>
+          {contacts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowContactSelector(true)}
+              style={{
+                padding: '0.4em 0.8em',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.85em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3em',
+                color: '#3B82F6'
+              }}
+            >
+              <span>👥</span>
+              <span>Contacts</span>
+            </button>
+          )}
+        </div>
         <input
           type="text"
           placeholder="npub1..."
@@ -280,7 +335,8 @@ export default function SendViaNostr({
             borderRadius: '6px',
             fontSize: '0.85em'
           }}>
-            <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> {profileInfo.displayName || profileInfo.name || 'Profile found'}
+            <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} />
+            {profileInfo.displayName || profileInfo.name || 'Profile found'}
           </div>
         )}
       </div>

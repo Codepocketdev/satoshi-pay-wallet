@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Zap, Send, Lightbulb, Mail } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
+import { contactsStore } from '../utils/contactsStore'
+import ContactSelector from './ContactSelector.jsx'
 
 // Counter management functions
 const getKeysetCounter = (mintUrl) => {
@@ -89,7 +91,18 @@ export default function SendViaLightning({
   const [sendingPayment, setSendingPayment] = useState(false)
   const [lnAddressAmount, setLnAddressAmount] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
+  const [contacts, setContacts] = useState([])
+  const [selectedContact, setSelectedContact] = useState(null)
+  const [showContactSelector, setShowContactSelector] = useState(false)  
+
   const isLnAddress = isLightningAddress(lightningInvoice)
+
+  useEffect(() => {
+    const allContacts = contactsStore.getAllContacts()
+      .filter(c => c.lightningAddress)
+      .sort((a, b) => b.lastUsed - a.lastUsed)
+    setContacts(allContacts)
+  }, [])
 
   const handleDecodeInvoice = async () => {
     if (!lightningInvoice.trim()) {
@@ -257,15 +270,60 @@ export default function SendViaLightning({
     }
   }
 
+  const handleContactSelect = (contact) => {
+    setLightningInvoice(contact.lightningAddress)
+    setShowContactSelector(false)
+  }
+
+  if (showContactSelector) {
+    return (
+      <ContactSelector
+        onBack={() => setShowContactSelector(false)}
+        onSelect={handleContactSelect}
+        filterType="lightning"
+      />
+    )
+  }
+
   return (
     <div className="card">
       <h3>Send via Lightning</h3>
 
       {!decodedInvoice ? (
         <>
-          <p style={{ marginBottom: '1em' }}>
-            Paste a Lightning invoice or enter a Lightning Address
-          </p>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '0.5em'
+          }}>
+            <p style={{ margin: 0 }}>
+              Paste a Lightning invoice or enter a Lightning Address
+            </p>
+            {contacts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowContactSelector(true)}
+                style={{
+                  padding: '0.4em 0.8em',
+                  background: 'rgba(255, 140, 0, 0.2)',
+                  border: '1px solid rgba(255, 140, 0, 0.4)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.85em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3em',
+                  color: '#FF8C00',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>👥</span>
+                <span>Contacts</span>
+              </button>
+            )}
+          </div>
+
           <div className="token-box">
             <textarea
               placeholder="Lightning invoice (lnbc...) or user@domain.com"

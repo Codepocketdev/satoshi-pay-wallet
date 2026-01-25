@@ -10,6 +10,8 @@ import MintSwap from './MintSwap.jsx'
 import LightningAddressSettings from './LightningAddressSettings.jsx'
 import MintDiscovery from './MintDiscovery.jsx'
 import NWCSettings from './NWCSettings'
+import Contacts from './Contacts.jsx'         
+import ContactEdit from './ContactEdit.jsx'    
 
 export default function SettingsPage({
   allMints,
@@ -53,6 +55,8 @@ export default function SettingsPage({
   const [showNWC, setShowNWC] = useState(false)
   const [selectedCurr, setSelectedCurr] = useState(getSelectedCurrency())
   const [showMintDiscovery, setShowMintDiscovery] = useState(false)
+  const [showContacts, setShowContacts] = useState(false)  
+  const [editingContactId, setEditingContactId] = useState(null)
 
   const handleAddMint = () => {
     const addMintFn = addCustomMint || onAddMint
@@ -116,6 +120,45 @@ export default function SettingsPage({
     setSelectedCurr(currency)
     setSuccess && setSuccess(`Currency changed to ${currency}`)
     setTimeout(() => setSuccess && setSuccess(''), 2000)
+  }
+
+  const handleShowContacts = () => {
+    setShowContacts(true)
+  }
+
+  const handleEditContact = (contactId) => {
+    setShowContacts(false)
+    setEditingContactId(contactId === null ? 'new' : contactId)
+  }
+
+  const handleContactSaved = () => {
+    setEditingContactId(null)
+    setSuccess && setSuccess('Contact saved!')
+    setTimeout(() => setSuccess && setSuccess(''), 2000)
+  }
+
+  // Contact Edit page
+  if (editingContactId !== null && editingContactId !== undefined) {
+    return (
+      <ContactEdit
+        contactId={editingContactId === 'new' ? null : editingContactId}
+        onBack={() => {
+          setEditingContactId(null)
+          setShowContacts(true)
+        }}
+        onSave={handleContactSaved}
+      />
+    )
+  }
+
+  // Contacts page
+  if (showContacts) {
+    return (
+      <Contacts
+        onBack={() => setShowContacts(false)}
+        onEdit={handleEditContact}
+      />
+    )
   }
 
   // P2PK Settings page
@@ -384,7 +427,27 @@ export default function SettingsPage({
             <div style={{ fontWeight: 'bold' }}>P2PK Keys</div>
             <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Secure payments with locked ecash</div>
           </div>
-          
+        </button>
+
+        <button
+          className="settings-btn"
+          onClick={handleShowContacts}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+            borderColor: '#3B82F6',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1em',
+            padding: '1em',
+            marginTop: '0.5em'
+          }}
+        >
+          <span style={{ fontSize: '1.5em' }}>👥</span>
+          <div style={{ textAlign: 'left', flex: 1 }}>
+            <div style={{ fontWeight: 'bold' }}>Contacts</div>
+            <div style={{ fontSize: '0.75em', opacity: 0.8 }}>Save payment contacts</div>
+          </div>
         </button>
 
         <button
