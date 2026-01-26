@@ -4,6 +4,7 @@ import { Send, CheckCircle, Zap } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
 import { contactsStore } from '../utils/contactsStore'
 import ContactSelector from './ContactSelector.jsx'
+import SaveContactPrompt from './SaveContactPrompt.jsx'
 import {
   sendNostrToken,
   isValidNpub,
@@ -34,6 +35,8 @@ export default function SendViaNostr({
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState(null)
   const [showContactSelector, setShowContactSelector] = useState(false)
+  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  const [contactToSave, setContactToSave] = useState(null)
 
   const nsec = localStorage.getItem('nostr_nsec')
   const isConnected = !!nsec
@@ -150,12 +153,26 @@ export default function SendViaNostr({
     setSuccess('✅ Token sent via Nostr DM!')
     vibrate([100, 50, 100])
 
-    setTimeout(() => {
-      resetSendPage()
-      setSendAmount('')
-      setRecipientNpub('')
-      setMessage('')
-    }, 2000)
+    // Check if should prompt to save contact
+    const autoSaveEnabled = localStorage.getItem('auto_save_contacts') !== 'false'
+    const isNewContact = !contacts.some(c => c.nostrPubkey === recipientNpub)
+    
+    if (autoSaveEnabled && isNewContact) {
+      // Show save prompt
+      setContactToSave({
+        nostrPubkey: recipientNpub,
+        name: profileInfo?.displayName || profileInfo?.name || ''
+      })
+      setShowSavePrompt(true)
+    } else {
+      // No save prompt, just reset after delay
+      setTimeout(() => {
+        resetSendPage()
+        setSendAmount('')
+        setRecipientNpub('')
+        setMessage('')
+      }, 2000)
+    }
 
   } catch (err) {
     console.error('Send error:', err)
@@ -180,7 +197,38 @@ export default function SendViaNostr({
     )
   }
 
-  if (!isConnected) {
+   if (showSavePrompt && contactToSave) {
+    return <SaveContactPrompt 
+      contact={contactToSave}
+      onSave={(name, favorite) => {
+        contactsStore.addContact({
+          name: name || contactToSave.nostrPubkey.substring(0, 12) + '...',
+          nostrPubkey: contactToSave.nostrPubkey,
+          favorite
+        })
+        setShowSavePrompt(false)
+        setContactToSave(null)
+        setTimeout(() => {
+          resetSendPage()
+          setSendAmount('')
+          setRecipientNpub('')
+          setMessage('')
+        }, 500)
+      }}
+      onSkip={() => {
+        setShowSavePrompt(false)
+        setContactToSave(null)
+        setTimeout(() => {
+          resetSendPage()
+          setSendAmount('')
+          setRecipientNpub('')
+          setMessage('')
+        }, 500)
+      }}
+    />
+  }
+
+   if (!isConnected) {
     return (
       <div className="card">
         <h3>Send via Nostr</h3>

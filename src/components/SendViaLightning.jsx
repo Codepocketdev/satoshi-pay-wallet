@@ -3,6 +3,7 @@ import { Zap, Send, Lightbulb, Mail } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
 import { contactsStore } from '../utils/contactsStore'
 import ContactSelector from './ContactSelector.jsx'
+import SaveContactPrompt from './SaveContactPrompt.jsx'
 
 // Counter management functions
 const getKeysetCounter = (mintUrl) => {
@@ -94,6 +95,8 @@ export default function SendViaLightning({
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState(null)
   const [showContactSelector, setShowContactSelector] = useState(false)  
+  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  const [contactToSave, setContactToSave] = useState(null)
 
   const isLnAddress = isLightningAddress(lightningInvoice)
 
@@ -236,13 +239,28 @@ export default function SendViaLightning({
 
       setSuccess(`Sent ${decodedInvoice.amount} sats via Lightning!`)
 
-      setTimeout(() => {
-        resetSendPage()
-        setDecodedInvoice(null)
-        setLightningInvoice('')
-        setLnAddressAmount('')
-        setPaymentNote('')
-      }, 2000)
+      // Check if should prompt to save contact
+      const autoSaveEnabled = localStorage.getItem('auto_save_contacts') !== 'false'
+      const isNewContact = decodedInvoice.isLnAddress && 
+        !contacts.some(c => c.lightningAddress === decodedInvoice.lnAddress)
+      
+      if (autoSaveEnabled && isNewContact) {
+        // Show save prompt
+        setContactToSave({
+          lightningAddress: decodedInvoice.lnAddress,
+          name: ''
+        })
+        setShowSavePrompt(true)
+      } else {
+        // No save prompt, just reset after delay
+        setTimeout(() => {
+          resetSendPage()
+          setDecodedInvoice(null)
+          setLightningInvoice('')
+          setLnAddressAmount('')
+          setPaymentNote('')
+        }, 2000)
+      }
 
     } catch (err) {
       console.error('Lightning payment error:', err)
@@ -283,6 +301,39 @@ export default function SendViaLightning({
         filterType="lightning"
       />
     )
+  }
+
+  if (showSavePrompt && contactToSave) {
+    return <SaveContactPrompt 
+      contact={contactToSave}
+      onSave={(name, favorite) => {
+        contactsStore.addContact({
+          name: name || contactToSave.lightningAddress,
+          lightningAddress: contactToSave.lightningAddress,
+          favorite
+        })
+        setShowSavePrompt(false)
+        setContactToSave(null)
+        setTimeout(() => {
+          resetSendPage()
+          setDecodedInvoice(null)
+          setLightningInvoice('')
+          setLnAddressAmount('')
+          setPaymentNote('')
+        }, 500)
+      }}
+      onSkip={() => {
+        setShowSavePrompt(false)
+        setContactToSave(null)
+        setTimeout(() => {
+          resetSendPage()
+          setDecodedInvoice(null)
+          setLightningInvoice('')
+          setLnAddressAmount('')
+          setPaymentNote('')
+        }, 500)
+      }}
+    />
   }
 
   return (

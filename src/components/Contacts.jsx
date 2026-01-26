@@ -16,10 +16,8 @@ export default function Contacts({ onBack, onEdit }) {
   }
 
   const handleDelete = (id, name) => {
-    if (confirm(`Delete contact "${name}"?`)) {
-      contactsStore.deleteContact(id)
-      loadContacts()
-    }
+    contactsStore.deleteContact(id)
+    loadContacts()
   }
 
   const handleToggleFavorite = (id) => {
@@ -90,6 +88,8 @@ export default function Contacts({ onBack, onEdit }) {
           <Plus size={20} />
           Add Contact
         </button>
+
+        <AutoSaveToggle /> 
 
         {/* Empty State */}
         {contacts.length === 0 && (
@@ -166,7 +166,7 @@ export default function Contacts({ onBack, onEdit }) {
             <p>No contacts found</p>
           </div>
         )}
-      </div>
+    </div>
     </div>
   )
 }
@@ -308,6 +308,67 @@ function ContactCard({ contact, onEdit, onDelete, onToggleFavorite }) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function AutoSaveToggle() {
+  const [enabled, setEnabled] = useState(
+    localStorage.getItem('auto_save_contacts') !== 'false'
+  )
+
+  const handleToggle = () => {
+    const newValue = !enabled
+    setEnabled(newValue)
+    localStorage.setItem('auto_save_contacts', newValue.toString())
+  }
+
+  return (
+    <div style={{
+      marginBottom: '1.5em',
+      padding: '0.8em',
+      background: 'rgba(59, 130, 246, 0.1)',
+      borderRadius: '8px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }}>
+      <span style={{ fontSize: '0.9em' }}>Ask to save new contacts</span>
+      <label style={{ 
+        position: 'relative', 
+        display: 'inline-block', 
+        width: '48px', 
+        height: '24px',
+        cursor: 'pointer'
+      }}>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={handleToggle}
+          style={{ opacity: 0, width: 0, height: 0 }}
+        />
+        <span style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: enabled ? '#3B82F6' : '#444',
+          borderRadius: '24px',
+          transition: '0.3s'
+        }}>
+          <span style={{
+            position: 'absolute',
+            height: '18px',
+            width: '18px',
+            left: enabled ? '26px' : '3px',
+            bottom: '3px',
+            background: 'white',
+            borderRadius: '50%',
+            transition: '0.3s'
+          }} />
+        </span>
+      </label>
     </div>
   )
 }
