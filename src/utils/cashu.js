@@ -4,7 +4,8 @@ import CryptoJS from 'crypto-js'
 
 export const DEFAULT_MINTS = [
   { name: 'Mint.btcforplebs', url: 'https://mint.btcforplebs.com' },
-  { name: 'Kashu', url: 'https://kashu.me' }
+  { name: 'Kashu', url: 'https://kashu.me' },
+  { name: 'Minibits mint', url: 'https://mint.minibits.cash/Bitcoin' },
 ]
 
 export const WALLET_NAME = 'Satoshi Pay'

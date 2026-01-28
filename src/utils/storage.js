@@ -232,6 +232,29 @@ export const migrateFromLocalStorage = async () => {
   return { success: true }
 }
 
+// 🔥 RESTORED TOKENS STORAGE (for manual claiming)
+export const saveRestoredTokens = async (tokens) => {
+  try {
+    await db.settings.put({
+      key: 'restored_tokens',
+      value: tokens
+    })
+    console.log('✅ Saved restored tokens for manual claiming')
+  } catch (err) {
+    console.error('Error saving restored tokens:', err)
+  }
+}
+
+export const getRestoredTokens = async () => {
+  try {
+    const setting = await db.settings.get('restored_tokens')
+    return setting?.value || []
+  } catch (err) {
+    console.error('Error loading restored tokens:', err)
+    return []
+  }
+}
+
 // 🔥 CLEAR ALL DATA
 export const clearAllData = async () => {
   try {

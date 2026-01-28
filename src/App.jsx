@@ -75,6 +75,71 @@ function App() {
     setSuccess
   } = walletState
 
+  const handleReceiveRestoredToken = async (tokenString) => {
+    try {
+      setLoading(true)
+      setError('')
+
+      let tokenToDecode = tokenString.trim()
+      if (tokenToDecode.toLowerCase().startsWith('cashu')) {
+        if (tokenToDecode.startsWith('cashu:')) {
+          tokenToDecode = tokenToDecode.substring(6)
+          if (tokenToDecode.startsWith('//')) {
+            tokenToDecode = tokenToDecode.substring(2)
+          }
+        } else {
+          tokenToDecode = tokenToDecode.substring(5)
+        }
+      }
+
+      const decoded = getDecodedToken(tokenToDecode)
+      let mintUrl, proofs
+
+      if (decoded.token && Array.isArray(decoded.token)) {
+        mintUrl = decoded.token[0]?.mint
+        proofs = decoded.token[0]?.proofs
+      } else if (decoded.mint && decoded.proofs) {
+        mintUrl = decoded.mint
+        proofs = decoded.proofs
+      }
+
+      if (!mintUrl || !proofs || proofs.length === 0) {
+        throw new Error('Invalid token')
+      }
+
+      const targetMint = new CashuMint(mintUrl)
+      const targetWallet = new CashuWallet(targetMint, { bip39seed: bip39Seed })
+      const existingProofs = await getProofs(mintUrl)
+
+      const receivedProofs = await targetWallet.receive(tokenToDecode, {
+        counter: 0,
+        proofsWeHave: existingProofs
+      })
+
+      if (!receivedProofs || receivedProofs.length === 0) {
+        throw new Error('Token already claimed')
+      }
+
+      const savedProofs = await getProofs(mintUrl)
+      const allProofs = [...savedProofs, ...receivedProofs]
+      await saveProofs(mintUrl, allProofs.filter(p => p && p.amount))
+
+      calculateAllBalances()
+
+      const amount = receivedProofs.reduce((sum, p) => sum + (p.amount || 0), 0)
+      addTransaction('receive', amount, 'Restored token', mintUrl)
+
+      setSuccess(`✅ Added ${amount} sats to wallet!`)
+      setTimeout(() => setSuccess(''), 3000)
+
+    } catch (err) {
+      console.error('Receive error:', err)
+      setError(`Failed to receive: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const {
     pendingTokens,
     addPendingToken,
@@ -342,7 +407,7 @@ function App() {
 
   if (showSplash) return <SplashScreen onComplete={() => setShowSplash(false)} />
   if (showSeedBackup) return <SeedPhraseBackup seedPhrase={seedPhrase} onConfirm={handleSeedBackupConfirm} onCancel={() => !isNewWallet && setShowSeedBackup(false)} isNewWallet={isNewWallet} />
-  if (showRestoreWallet) return <RestoreWallet onRestore={handleRestoreWallet} onCancel={() => setShowRestoreWallet(false)} />
+  if (showRestoreWallet) return <RestoreWallet onRestore={handleRestoreWallet} onCancel={() => setShowRestoreWallet(false)} allMints={allMints} onReceiveToken={handleReceiveRestoredToken} />
   if (showScanner) return <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} mode={scanMode} />
   if (showPendingTokens) return <PendingTokens pendingTokens={pendingTokens} onReclaim={(pending) => reclaimPendingToken(pending, getProofs, saveProofs, calculateAllBalances, setError, setSuccess, setLoading)} onCopy={(token) => copyToClipboard(token, 'Token')} onRemove={removePendingToken} onClose={() => setShowPendingTokens(false)} />
   if (showHistoryPage) return <HistoryPage transactions={transactions} totalBalance={totalBalance} onClose={() => { setShowHistoryPage(false); calculateAllBalances() }} />
