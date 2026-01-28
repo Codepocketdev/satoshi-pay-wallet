@@ -206,22 +206,6 @@ export const useWallet = () => {
       const seed = deriveMasterKey(restoredSeed)
       const encKey = deriveEncryptionKey(restoredSeed)
 
-      localStorage.removeItem('cashu_transactions')
-      localStorage.removeItem('pending_tokens')
-      clearBalanceSnapshot()
-
-      localStorage.setItem('wallet_seed', restoredSeed)
-      localStorage.setItem('wallet_backed_up', 'true')
-      setSeedPhrase(restoredSeed)
-      setBip39Seed(seed)
-      setMasterKey(encKey)
-
-      await loadCustomMintsData()
-
-      const mint = new CashuMint(mintUrl)
-      const newWallet = new CashuWallet(mint, { bip39seed: seed })
-      setWallet(newWallet)
-
       const BATCH_SIZE = 200
       const MAX_EMPTY_BATCHES = 2
       const mintsToScan = allMints.filter(m => selectedMints.includes(m.url))
