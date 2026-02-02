@@ -407,7 +407,7 @@ function App() {
 
   if (showSplash) return <SplashScreen onComplete={() => setShowSplash(false)} />
   if (showSeedBackup) return <SeedPhraseBackup seedPhrase={seedPhrase} onConfirm={handleSeedBackupConfirm} onCancel={() => !isNewWallet && setShowSeedBackup(false)} isNewWallet={isNewWallet} />
-  if (showRestoreWallet) return <RestoreWallet onRestore={handleRestoreWallet} onCancel={() => setShowRestoreWallet(false)} allMints={allMints} onReceiveToken={handleReceiveRestoredToken} />
+  if (showRestoreWallet) return <RestoreWallet onRestore={handleRestoreWallet} onCancel={() => setShowRestoreWallet(false)} allMints={allMints} onReceiveToken={handleReceiveRestoredToken} onAddMint={addCustomMint} />
   if (showScanner) return <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} mode={scanMode} />
   if (showPendingTokens) return <PendingTokens pendingTokens={pendingTokens} onReclaim={(pending) => reclaimPendingToken(pending, getProofs, saveProofs, calculateAllBalances, setError, setSuccess, setLoading)} onCopy={(token) => copyToClipboard(token, 'Token')} onRemove={removePendingToken} onClose={() => setShowPendingTokens(false)} />
   if (showHistoryPage) return <HistoryPage transactions={transactions} totalBalance={totalBalance} onClose={() => { setShowHistoryPage(false); calculateAllBalances() }} />

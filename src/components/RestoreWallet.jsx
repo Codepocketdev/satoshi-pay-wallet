@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { RotateCcw, FileText, Lightbulb, AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { vibrate } from '../utils/cashu.js'
+import { searchMintsOnNostr } from '../utils/nostrMintBackup.js'
+import { Cloud } from 'lucide-react'
 
-export default function RestoreWallet({ onRestore, onCancel, allMints, onReceiveToken }) {
+export default function RestoreWallet({ onRestore, onCancel, allMints, onReceiveToken, onAddMint }) {
   const [step, setStep] = useState(1) // 1: seed, 2: select mints, 3: restore
   const [seedInput, setSeedInput] = useState('')
   const [selectedMints, setSelectedMints] = useState([])
@@ -13,7 +15,10 @@ export default function RestoreWallet({ onRestore, onCancel, allMints, onReceive
   const [totalRestored, setTotalRestored] = useState(0)
   const [restoredProofs, setRestoredProofs] = useState(0)
   const [restoredTokens, setRestoredTokens] = useState([]) // Store restored tokens
-
+  const [nostrMints, setNostrMints] = useState([])
+  const [searchingNostr, setSearchingNostr] = useState(false)
+  const [nostrError, setNostrError] = useState('')
+ 
   const handleSeedSubmit = () => {
     try {
       setError('')
@@ -34,6 +39,42 @@ export default function RestoreWallet({ onRestore, onCancel, allMints, onReceive
     }
   }
 
+  const handleSearchNostr = async () => {
+  try {
+    setSearchingNostr(true)
+    setNostrError('')
+
+    const cleanSeed = seedInput.trim().toLowerCase().replace(/\s+/g, ' ')
+
+    const relays = [
+      'wss://relay.damus.io',
+      'wss://relay.8333.space/',
+      'wss://nos.lol',
+      'wss://relay.primal.net'
+    ]
+
+    // First show the derived pubkey so we can verify it
+    const { deriveMintBackupKeys } = await import('../utils/nostrMintBackup.js')
+    const { publicKeyHex } = await deriveMintBackupKeys(cleanSeed)
+
+    const { searchMintsOnNostr } = await import('../utils/nostrMintBackup.js')
+    const discovered = await searchMintsOnNostr(cleanSeed, relays)
+
+    setNostrMints(discovered)
+
+    // Auto-select ALL discovered mints
+    const allNostrUrls = discovered.map(nm => nm.url)
+    setSelectedMints(prev => [...new Set([...prev, ...allNostrUrls])])
+
+    vibrate([100, 50, 100])
+  } catch (err) {
+    setNostrError(`ERROR: ${err.message}`)
+    vibrate([200])
+  } finally {
+    setSearchingNostr(false)
+  }
+}
+
   const toggleMint = (mintUrl) => {
     if (selectedMints.includes(mintUrl)) {
       setSelectedMints(selectedMints.filter(url => url !== mintUrl))
@@ -48,6 +89,23 @@ export default function RestoreWallet({ onRestore, onCancel, allMints, onReceive
       setLoading(true)
       setError('')
       setStep(3)
+
+      // Add any new Nostr-discovered mints before restoring
+      const newNostrMints = nostrMints.filter(
+        nm => selectedMints.includes(nm.url) && !allMints.find(m => m.url === nm.url)
+      )
+      for (const mint of newNostrMints) {
+        try {
+          const mintName = mint.url.replace(/^https?:\/\//, '').replace(/\/.*/,'')
+          await onAddMint(mintName, mint.url)
+        } catch (err) {
+          console.error('Failed to add mint:', err)
+        }
+      }
+      // Wait for allMints state to update after adding
+      if (newNostrMints.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 3000))
+      }
 
       const cleanSeed = seedInput.trim().toLowerCase().replace(/\s+/g, ' ')
 
@@ -281,6 +339,110 @@ export default function RestoreWallet({ onRestore, onCancel, allMints, onReceive
           <p style={{ fontSize: '0.9em', marginBottom: '1em', opacity: 0.8 }}>
             Select which mints to restore from. By default, all mints are selected.
           </p>
+
+   {/* Nostr Search Button */}
+        <button
+          className="secondary-btn"
+          onClick={handleSearchNostr}
+          disabled={searchingNostr}
+          style={{
+            marginBottom: '1em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5em',
+            width: '100%'
+          }}
+        >
+          {searchingNostr ? (
+            <>
+              <Loader size={16} className="spin" />
+              Searching Nostr...
+            </>
+          ) : (
+            <>
+              <Cloud size={16} />
+              Search Nostr for Backed-up Mints
+            </>
+          )}
+        </button>
+
+        {nostrError && (
+          <div style={{
+            background: 'rgba(255, 107, 107, 0.1)',
+            color: '#ff6b6b',
+            padding: '0.8em',
+            borderRadius: '8px',
+            marginBottom: '1em',
+            fontSize: '0.9em'
+          }}>
+            {nostrError}
+          </div>
+        )}
+
+        {nostrMints.length > 0 && (
+          <div className="card" style={{
+            background: 'rgba(33, 150, 243, 0.1)',
+            borderColor: 'rgba(33, 150, 243, 0.3)',
+            marginBottom: '1em'
+          }}>
+            <h4 style={{ color: '#2196F3', marginBottom: '0.5em' }}>
+              Found {nostrMints.length} mint{nostrMints.length !== 1 ? 's' : ''} from Nostr backup
+            </h4>
+            {nostrMints.map(nm => {
+              const alreadyAdded = allMints.find(m => m.url === nm.url)
+              const isSelected = selectedMints.includes(nm.url)
+              return (
+                <div
+                  key={nm.url}
+                  onClick={() => !alreadyAdded && toggleMint(nm.url)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.8em',
+                    padding: '0.8em',
+                    marginBottom: '0.4em',
+                    borderRadius: '8px',
+                    cursor: alreadyAdded ? 'default' : 'pointer',
+                    border: alreadyAdded
+                      ? '1px solid rgba(76, 175, 80, 0.3)'
+                      : isSelected
+                        ? '2px solid #3B82F6'
+                        : '1px solid rgba(255, 255, 255, 0.1)',
+                    background: alreadyAdded
+                      ? 'rgba(76, 175, 80, 0.1)'
+                      : isSelected
+                        ? 'rgba(59, 130, 246, 0.1)'
+                        : 'rgba(0,0,0,0.2)'
+                  }}
+                >
+                  <div style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '4px',
+                    border: '2px solid',
+                    borderColor: alreadyAdded ? '#4CAF50' : isSelected ? '#3B82F6' : 'rgba(255,255,255,0.3)',
+                    background: alreadyAdded ? '#4CAF50' : isSelected ? '#3B82F6' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {(alreadyAdded || isSelected) && <CheckCircle size={14} color="white" />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.85em', wordBreak: 'break-all' }}>{nm.url}</div>
+                    {alreadyAdded && (
+                      <div style={{ fontSize: '0.75em', color: '#4CAF50', marginTop: '0.2em' }}>
+                        ✅ Already in wallet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
           {allMints.length === 0 && (
             <div style={{
