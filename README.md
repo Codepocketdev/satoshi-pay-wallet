@@ -2,7 +2,7 @@
 
 A modern, open-source Bitcoin wallet powered by Cashu ecash protocol and Lightning Network. Send and receive bitcoin instantly with enhanced privacy.
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-orange)](https://satoshi-pay-wallet.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-orange)](https://satoshipay.me)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub Issues](https://img.shields.io/github/issues/Codepocketdev/satoshi-pay-wallet)](https://github.com/Codepocketdev/satoshi-pay-wallet/issues)
 
@@ -10,7 +10,7 @@ A modern, open-source Bitcoin wallet powered by Cashu ecash protocol and Lightni
 
 ## 🚀 Live Demo
 
-**Try it now:** [https://satoshi-pay-wallet.vercel.app](https://satoshi-pay-wallet.vercel.app)
+**Try it now:** [https://satoshipay.me](https://satoshipay.me)
 
 📱 **Install as PWA** for the best mobile experience! Tap "Add to Home Screen" in your browser menu.
 
@@ -76,7 +76,7 @@ A modern, open-source Bitcoin wallet powered by Cashu ecash protocol and Lightni
 
 ### For Users
 
-1. **Visit**: [https://satoshi-pay-wallet.vercel.app](https://satoshi-pay-wallet.vercel.app)
+1. **Visit**: [https://satoshipay.me](https://satoshipay.me)
 2. **Install**: Tap "Add to Home Screen" in your browser menu
 3. **Create Wallet**: Your seed phrase will be generated automatically
 4. **Backup**: Write down your 12-word seed phrase securely
@@ -278,5 +278,5 @@ If you find this project useful:
 
 **Made with ⚡ and 🧡 for the Bitcoin community**
 
-[Website](https://satoshi-pay-wallet.vercel.app) • [GitHub](https://github.com/Codepocketdev/satoshi-pay-wallet) • [Issues](https://github.com/Codepocketdev/satoshi-pay-wallet/issues)
+[Website](https://satoshipay.me) • [GitHub](https://github.com/Codepocketdev/satoshi-pay-wallet) • [Issues](https://github.com/Codepocketdev/satoshi-pay-wallet/issues)
 
