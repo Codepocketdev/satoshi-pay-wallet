@@ -96,7 +96,6 @@ export default function SeedPhraseBackup({ seedPhrase, onConfirm, onCancel, isNe
               className="copy-btn"
               onClick={() => {
                 navigator.clipboard.writeText(seedPhrase)
-                alert('⚠️ Seed phrase copied! Remember to delete from clipboard after writing it down.')
               }}
               style={{ 
                 marginTop: '0.5em',
