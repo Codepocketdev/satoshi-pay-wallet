@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Settings, Lock, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, FileText, RotateCcw, ArrowDownUp, Key } from 'lucide-react'
+import { Settings, Lock, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, FileText, RotateCcw, ArrowDownUp, Key, Cloud } from 'lucide-react'
 import { DEFAULT_MINTS } from '../utils/cashu.js'
 import { generateWalletSeed } from '../utils/cashu.js'
 import { loadSeedPhrase, saveSeedPhrase } from '../utils/storage.js'
@@ -12,6 +12,7 @@ import MintDiscovery from './MintDiscovery.jsx'
 import NWCSettings from './NWCSettings'
 import Contacts from './Contacts.jsx'         
 import ContactEdit from './ContactEdit.jsx'    
+import NostrMintBackup from './NostrMintBackup.jsx'
 
 export default function SettingsPage({
   allMints,
@@ -57,6 +58,7 @@ export default function SettingsPage({
   const [showMintDiscovery, setShowMintDiscovery] = useState(false)
   const [showContacts, setShowContacts] = useState(false)  
   const [editingContactId, setEditingContactId] = useState(null)
+  const [showNostrBackup, setShowNostrBackup] = useState(false)
 
   const handleAddMint = () => {
     const addMintFn = addCustomMint || onAddMint
@@ -209,6 +211,18 @@ export default function SettingsPage({
     )
   }
 
+  if (showNostrBackup) {
+    return (
+      <NostrMintBackup
+        allMints={allMints}
+        seedPhrase={seedPhrase}
+        onBack={() => setShowNostrBackup(false)}
+        setSuccess={setSuccess}
+        setError={setError}
+      />
+    )
+  }
+
 // Wallet functions for NWC
   const walletFunctions = {
     getBalance: async () => {
@@ -318,6 +332,15 @@ export default function SettingsPage({
         >
           <FileText size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> View Recovery Phrase
         </button>
+
+        <button
+          className="primary-btn"
+          onClick={() => setShowNostrBackup(true)}
+          style={{ marginTop: '0.5em' }}
+        >
+          <Cloud size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Backup Mints to Nostr
+        </button>
+
 
         <button
           className="secondary-btn"

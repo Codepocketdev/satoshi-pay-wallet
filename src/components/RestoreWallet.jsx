@@ -53,11 +53,6 @@ export default function RestoreWallet({ onRestore, onCancel, allMints, onReceive
       'wss://relay.primal.net'
     ]
 
-    // First show the derived pubkey so we can verify it
-    const { deriveMintBackupKeys } = await import('../utils/nostrMintBackup.js')
-    const { publicKeyHex } = await deriveMintBackupKeys(cleanSeed)
-
-    const { searchMintsOnNostr } = await import('../utils/nostrMintBackup.js')
     const discovered = await searchMintsOnNostr(cleanSeed, relays)
 
     setNostrMints(discovered)

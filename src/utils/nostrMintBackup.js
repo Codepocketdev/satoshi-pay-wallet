@@ -126,7 +126,7 @@ export async function backupMintsToNostr(mnemonic, mintUrls, relays = DEFAULT_RE
         ],
         created_at: backupData.timestamp,
       },
-      privateKeyHex
+      privateKeyBytes
     );
 
     await pool.publish(relays, event);

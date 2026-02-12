@@ -268,3 +268,21 @@ export const clearAllData = async () => {
     console.error('Error clearing data:', err)
   }
 }
+
+// Nostr Backup Settings
+export const getNostrBackupEnabled = () => {
+  try {
+    const enabled = localStorage.getItem('nostr_backup_enabled')
+    return enabled === 'true'
+  } catch (e) {
+    return false
+  }
+}
+
+export const setNostrBackupEnabled = (enabled) => {
+  try {
+    localStorage.setItem('nostr_backup_enabled', enabled ? 'true' : 'false')
+  } catch (e) {
+    console.error('Failed to save nostr backup setting:', e)
+  }
+}

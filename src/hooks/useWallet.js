@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { CashuMint, CashuWallet, CheckStateEnum, getEncodedToken } from '@cashu/cashu-ts'
 import { hashToCurve } from '@cashu/crypto/modules/common'
 import { useQueryClient } from '@tanstack/react-query'
+import { getNostrBackupEnabled } from '../utils/storage.js'
+import { backupMintsToNostr } from '../utils/nostrMintBackup.js'
 import {
   generateWalletSeed,
   deriveMasterKey,
@@ -11,6 +13,7 @@ import {
 import {
   saveProofsForMint,
   getProofsForMint,
+  loadSeedPhrase,
   loadTransactions,
   saveTransactions,
   addTransaction as addTx,
@@ -453,16 +456,23 @@ export const useWallet = () => {
 
     setSuccess('Mint added!')
     setTimeout(() => setSuccess(''), 2000)
+    
+    // Auto-backup if enabled
+    triggerNostrBackup()
+    
     return true
-  }
-
-  const removeCustomMint = async (url) => {
+   }
+ 
+ const removeCustomMint = async (url) => {
     const updated = customMints.filter(m => m.url !== url)
     await saveCustomMints(updated)
     setCustomMints(updated)
     setAllMints([...DEFAULT_MINTS, ...updated])
     setSuccess('Mint removed!')
     setTimeout(() => setSuccess(''), 2000)
+    
+    // Auto-backup if enabled
+    triggerNostrBackup()
   }
 
   const resetMint = async (specificMint = null) => {
@@ -500,7 +510,30 @@ export const useWallet = () => {
     await calculateAllBalances()
   }
 
+  const triggerNostrBackup = async () => {
+    try {
+      const enabled = getNostrBackupEnabled()
+      if (!enabled) return
+      
+      const seed = loadSeedPhrase()
+      if (!seed) return
+      
+      setTimeout(async () => {
+        try {
+          const mintUrls = allMints.map(m => m.url)
+          await backupMintsToNostr(seed, mintUrls)
+          console.log('Auto-backup completed')
+        } catch (err) {
+          console.error('Auto-backup failed:', err)
+        }
+      }, 1000)
+    } catch (err) {
+      console.error('Trigger backup error:', err)
+    }
+  }
+
   return {
+  
     wallet,
     mintUrl,
     setMintUrl,
