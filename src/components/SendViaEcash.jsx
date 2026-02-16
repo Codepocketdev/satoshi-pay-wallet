@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getEncodedToken } from '@cashu/cashu-ts'
-import { Wallet, Copy, Key } from 'lucide-react'
+import { Wallet, Copy, Key, X } from 'lucide-react'
 import { generateQR } from '../utils/cashu.js'
 import { loadP2PKKeys, maybeConvertNpub, isValidPubkey } from '../utils/p2pk.js'
 import AnimatedQRCode from './AnimatedQRCode.jsx'
@@ -24,6 +24,7 @@ export default function SendViaEcash({
   const [generatedToken, setGeneratedToken] = useState('')
   const [lockToPubkey, setLockToPubkey] = useState('')
   const [showP2PKOption, setShowP2PKOption] = useState(false)
+  const [showTokenDisplay, setShowTokenDisplay] = useState(false)
 
   const p2pkKeys = loadP2PKKeys()
   const hasP2PKKeys = p2pkKeys.length > 0
@@ -111,6 +112,7 @@ const token = getEncodedToken({
 console.log('Generated token:', token.substring(0, 50) + '...')
 
       setGeneratedToken(token)
+      setShowTokenDisplay(true)
 
       const txNote = isP2PKLocked 
         ? `P2PK-locked ecash generated (${lockToPubkey.substring(0, 16)}...)`
@@ -360,46 +362,105 @@ console.log('Generated token:', token.substring(0, 50) + '...')
         {loading ? 'Generating...' : lockToPubkey.trim() ? '🔒 Generate Locked Token' : 'Generate Token'}
       </button>
 
-      {generatedToken && (
-        <div style={{ marginTop: '1em' }}>
-          {lockToPubkey && (
-            <div style={{
-              marginBottom: '1em',
-              padding: '0.8em',
-              background: 'rgba(139, 92, 246, 0.1)',
-              border: '1px solid #8B5CF6',
-              borderRadius: '8px',
-              fontSize: '0.85em',
-              color: '#A855F7'
-            }}>
-              <Key size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5em' }} />
-              <strong>Token Locked!</strong> Only the recipient can claim it.
-            </div>
-          )}
-
-           <div style={{ marginBottom: '1em' }}>
-            <AnimatedQRCode data={generatedToken} size={280} />
-          </div>
-          <div className="token-box">
-            <textarea
-              readOnly
-              value={generatedToken}
-              rows={4}
-              style={{ fontSize: '0.7em', marginBottom: '0.5em' }}
-            />
-          </div>
-          <button className="copy-btn" onClick={() => copyToClipboard(generatedToken)}>
-            <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Token
-          </button>
-          <p style={{ fontSize: '0.75em', opacity: 0.5, marginTop: '0.5em', textAlign: 'center' }}>
-            Token will auto-clear once recipient claims it
-          </p>
-        </div>
-      )}
-
-      <button className="back-btn" style={{ marginTop: '1em', position: 'relative', left: 0, transform: 'none' }} onClick={resetSendPage}>
+      <button 
+        className="back-btn" 
+        onClick={resetSendPage}
+        style={{ marginTop: '2em', position: 'relative', zIndex: 1 }}
+      >
         ← Change Method
       </button>
+
+      {/* Token QR Modal */}
+      {showTokenDisplay && generatedToken && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1em'
+          }}
+          onClick={() => setShowTokenDisplay(false)}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              padding: '1.5em',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowTokenDisplay(false)}
+              style={{
+                position: 'absolute',
+                top: '0.5em',
+                right: '0.5em',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0.5em'
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <h3 style={{ marginTop: 0, textAlign: 'center', color: '#FF8C00' }}>
+              Token Generated
+            </h3>
+
+            <div style={{ textAlign: 'center', marginBottom: '1em' }}>
+              <AnimatedQRCode data={generatedToken} size={280} />
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255, 140, 0, 0.1)',
+                padding: '0.8em',
+                borderRadius: '8px',
+                fontSize: '0.75em',
+                textAlign: 'center',
+                marginBottom: '1em',
+                maxHeight: '80px',
+                overflowY: 'auto',
+                wordBreak: 'break-all'
+              }}
+            >
+              {generatedToken}
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={() => copyToClipboard(generatedToken)}
+              style={{ width: '100%', marginBottom: '0.5em' }}
+            >
+              <Copy size={16} style={{ marginRight: '0.5em' }} /> Copy Token
+            </button>
+
+            <button
+              className="secondary-btn"
+              onClick={() => setShowTokenDisplay(false)}
+              style={{ width: '100%' }}
+            >
+              Close
+            </button>
+
+            <p style={{ fontSize: '0.7em', opacity: 0.5, marginTop: '1em', textAlign: 'center' }}>
+              Token will auto-clear once recipient claims it
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
