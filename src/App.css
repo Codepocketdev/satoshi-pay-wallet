@@ -1,3 +1,19 @@
+# Delete everything and paste the code above
+# Save with Ctrl+O, Enter, Ctrl+X
+npm run build
+git add .
+git commit -m "fix: Constrain app to mobile width on desktop"
+git push origin main/* Desktop constraint - keep mobile layout centered */
+body {
+  background: #0a0a0a;
+}
+
+#root {
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 0 30px rgba(255, 140, 0, 0.1);
+}
+
 .app {
   width: 100%;
   max-width: 600px;
