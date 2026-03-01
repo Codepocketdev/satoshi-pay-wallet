@@ -9,6 +9,30 @@ export const DEFAULT_RELAYS = [
   'wss://relay.snort.social'
 ]
 
+// Profile cache - 1 hour TTL
+const PROFILE_CACHE_TTL = 3600000
+
+function getCachedProfile(pubkey) {
+  try {
+    const raw = localStorage.getItem('satoshi_prof_' + pubkey)
+    if (!raw) return null
+    const { data, ts } = JSON.parse(raw)
+    if (Date.now() - ts > PROFILE_CACHE_TTL) return null
+    return data
+  } catch { 
+    return null 
+  }
+}
+
+function setCachedProfile(pubkey, data) {
+  try {
+    localStorage.setItem('satoshi_prof_' + pubkey, JSON.stringify({ 
+      data, 
+      ts: Date.now() 
+    }))
+  } catch {}
+}
+
 // Generate new Nostr keypair
 export function generateNostrKeys() {
   const secretKey = generateSecretKey()
@@ -135,8 +159,17 @@ export async function subscribeToNostrTokens(nsec, onTokenReceived) {
 
 // Get Nostr profile metadata
 export async function getNostrProfile(npub) {
-  const pool = new SimplePool()
   const pubkey = decodeNpub(npub)
+  
+  // Check cache first
+  const cached = getCachedProfile(pubkey)
+  if (cached) {
+    console.log('✅ Profile from cache:', cached.name || cached.displayName)
+    return cached
+  }
+
+  console.log('🔍 Fetching profile from relays...')
+  const pool = new SimplePool()
   
   try {
     const events = await pool.querySync(DEFAULT_RELAYS, {
@@ -149,17 +182,24 @@ export async function getNostrProfile(npub) {
     
     if (events.length > 0) {
       const metadata = JSON.parse(events[0].content)
-      return {
+      const profile = {
         name: metadata.name,
         displayName: metadata.display_name || metadata.name,
         picture: metadata.picture,
         about: metadata.about,
         nip05: metadata.nip05
       }
+      
+      // Cache it
+      setCachedProfile(pubkey, profile)
+      console.log('✅ Profile fetched:', profile.name || profile.displayName)
+      
+      return profile
     }
     
     return null
   } catch (err) {
+    console.error('❌ Profile fetch failed:', err)
     pool.close(DEFAULT_RELAYS)
     return null
   }

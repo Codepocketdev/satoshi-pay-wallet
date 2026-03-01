@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CashuMint, CashuWallet, getDecodedToken } from '@cashu/cashu-ts'
-import { Settings, Zap, FileText, Copy, ArrowDown, ArrowUp, Lightbulb, CheckCircle, RefreshCw } from 'lucide-react'
+import { Settings, Zap, FileText, Copy, ArrowDown, ArrowUp, Lightbulb, CheckCircle, RefreshCw, X } from 'lucide-react'
 import './App.css'
 
 import { useWallet } from './hooks/useWallet.js'
@@ -147,7 +147,7 @@ function App() {
     reclaimPendingToken
   } = usePendingTokens(wallet, bip39Seed, updateTransactionStatus)
 
-  // 🔥 NEW: Mint quote processor hook - handles all pending mint quotes
+  //NEW: Mint quote processor hook - handles all pending mint quotes
   useMintQuoteProcessor({
     bip39Seed,
     getProofs,
@@ -180,6 +180,7 @@ function App() {
   const [mintAmount, setMintAmount] = useState('')
   const [lightningInvoice, setLightningInvoice] = useState('')
   const [lightningInvoiceQR, setLightningInvoiceQR] = useState('')
+  const [showInvoiceQRModal, setShowInvoiceQRModal] = useState(false)
   const [currentQuote, setCurrentQuote] = useState(null)
 
   const [btcPrice, setBtcPrice] = useState(null)
@@ -328,7 +329,7 @@ function App() {
     }
   }
 
-  // 🔥 UPDATED: handleMint with proper quote persistence
+  //UPDATED: handleMint with proper quote persistence
   const handleMint = async () => {
     if (!wallet || !mintAmount) return
 
@@ -344,7 +345,7 @@ function App() {
 
       console.log('✅ Mint quote created:', mintQuote)
 
-      // 🔥 Save to database immediately
+      //Save to database immediately
       await saveMintQuote({
         quote: mintQuote.quote,
         request: mintQuote.request,
@@ -354,10 +355,11 @@ function App() {
       })
 
       setLightningInvoice(mintQuote.request)
-      setCurrentQuote(mintQuote)
-      
+      setCurrentQuote(mintQuote)      
+
       const qr = await generateQR(mintQuote.request)
       setLightningInvoiceQR(qr)
+      setShowInvoiceQRModal(true)
       
       setSuccess('Invoice created! Checking for payment...')
       setTimeout(() => setSuccess(''), 2000)
@@ -369,7 +371,7 @@ function App() {
     }
   }
 
-  // 🔥 UPDATED: handleCancelMint with proper cleanup
+  //UPDATED: handleCancelMint with proper cleanup
   const handleCancelMint = async () => {
     if (currentQuote) {
       // Delete from database when user cancels
@@ -378,6 +380,7 @@ function App() {
     
     setLightningInvoice('')
     setLightningInvoiceQR('')
+    setShowInvoiceQRModal(false)
     setCurrentQuote(null)
     setMintAmount('')
     setError('')
@@ -569,31 +572,10 @@ function App() {
         </h3>
         <p style={{ fontSize: '0.85em', marginBottom: '0.8em', opacity: 0.8 }}>Pay a Lightning invoice to mint tokens</p>
 
-        {!lightningInvoice ? (
           <>
-            <input type="number" placeholder="Amount in sats" value={mintAmount} onChange={(e) => setMintAmount(e.target.value)} />
-            <button className="primary-btn" onClick={handleMint} disabled={loading || !mintAmount}>{loading ? 'Creating...' : 'Create Invoice'}</button>
-          </>
-        ) : (
-          <div>
-            <p style={{ fontSize: '0.9em', marginBottom: '0.5em', color: '#51cf66' }}>Lightning Invoice:</p>
-            {lightningInvoiceQR && (
-              <div style={{ textAlign: 'center', marginBottom: '1em' }}>
-                <img src={lightningInvoiceQR} alt="Invoice QR" style={{ maxWidth: '280px', width: '100%', borderRadius: '8px' }} />
-              </div>
-            )}
-            <div className="token-box">
-              <textarea readOnly value={lightningInvoice} rows={3} style={{ fontSize: '0.7em', marginBottom: '0.5em' }} />
-            </div>
-            <div style={{ background: 'rgba(81, 207, 102, 0.1)', padding: '0.8em', borderRadius: '8px', marginBottom: '0.5em', fontSize: '0.85em' }}>
-              <Lightbulb size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> After paying, your funds will appear automatically within a few seconds
-            </div>
-            <button className="copy-btn" onClick={() => copyToClipboard(lightningInvoice, 'Invoice')} style={{ marginBottom: '0.5em' }}>
-              <Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Copy Invoice
-            </button>
-            <button className="cancel-btn" onClick={handleCancelMint} style={{ width: '100%' }}>Cancel</button>
-          </div>
-        )}
+          <input type="number" placeholder="Amount in sats" value={mintAmount} onChange={(e) => setMintAmount(e.target.value)} />
+          <button className="primary-btn" onClick={handleMint} disabled={loading || !mintAmount}>{loading ? 'Creating...' : 'Create Invoice'}</button>
+        </>
       </div>
 
       {(pendingTokens.length > 0 || parseInt(localStorage.getItem('pending_tokens_count') || '0') > 0) && (
@@ -616,6 +598,105 @@ function App() {
           <span className="btn-text-compact">Send</span>
         </button>
       </div>
+
+      {/* Invoice QR Modal */}
+      {showInvoiceQRModal && lightningInvoiceQR && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1em'
+          }}
+          onClick={() => setShowInvoiceQRModal(false)}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              padding: '1.5em',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowInvoiceQRModal(false)}
+              style={{
+                position: 'absolute',
+                top: '0.5em',
+                right: '0.5em',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0.5em'
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <h3 style={{ marginTop: 0, textAlign: 'center', color: '#FF8C00' }}>
+              Lightning Invoice
+            </h3>
+
+            <div style={{ textAlign: 'center', marginBottom: '1em' }}>
+              <img 
+                src={lightningInvoiceQR} 
+                alt="Invoice QR" 
+                style={{ maxWidth: '300px', width: '100%', borderRadius: '8px' }} 
+              />
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255, 140, 0, 0.1)',
+                padding: '0.8em',
+                borderRadius: '8px',
+                fontSize: '0.75em',
+                textAlign: 'center',
+                marginBottom: '1em',
+                maxHeight: '80px',
+                overflowY: 'auto',
+                wordBreak: 'break-all'
+              }}
+            >
+              {lightningInvoice}
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={() => copyToClipboard(lightningInvoice, 'Invoice')}
+              style={{ width: '100%', marginBottom: '0.5em' }}
+            >
+              <Copy size={16} style={{ marginRight: '0.5em' }} /> Copy Invoice
+            </button>
+
+            <button
+              className="secondary-btn"
+              onClick={() => {
+                setShowInvoiceQRModal(false)
+                handleCancelMint()
+              }}
+              style={{ width: '100%' }}
+            >
+              Cancel
+            </button>
+
+            <p style={{ fontSize: '0.7em', opacity: 0.5, marginTop: '1em', textAlign: 'center' }}>
+              After paying, your funds will appear automatically
+            </p>
+          </div>
+        </div>
+      )}
 
       <footer style={{ marginTop: '2em', opacity: 0.5, textAlign: 'center', fontSize: '0.85em' }}>
         <p>Lead Life ● Like Satoshi</p>
