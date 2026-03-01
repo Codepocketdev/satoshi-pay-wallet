@@ -9,14 +9,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Satoshi Pay" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/satoshi-pay-wallet/icon-192.png" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Satoshi Pay - Cashu Wallet</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
 
-    <!-- Service Worker Registration with Update Handling -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -24,17 +24,14 @@
             .then(registration => {
               console.log('✅ Service Worker registered:', registration)
 
-              // Check for updates every 60 seconds
               setInterval(() => {
                 registration.update()
               }, 60000)
 
-              // Detect when new SW is waiting
               registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New SW is ready, notify user
                     if (confirm('New version available! Reload to update?')) {
                       window.location.reload()
                     }
@@ -50,3 +47,4 @@
     </script>
   </body>
 </html>
+
