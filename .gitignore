@@ -7,3 +7,4 @@ dist/
 *.md
 !README.md
 .vercel
+.env*.local
