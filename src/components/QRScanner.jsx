@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import QrScanner from 'qr-scanner'
+import { decode as decodeLNURL } from 'light-bolt11-decoder'
+import { bech32 } from '@scure/base'
 
 export default function QRScanner({ onScan, onClose, mode }) {
   const videoRef = useRef(null)
@@ -131,9 +133,36 @@ if (lowerData.startsWith('cashu')) {
         return { type: 'cashu_request', data, raw: data }
       }
       
-      // Lightning Address (user@domain.com)
-      if (data.includes('@') && data.includes('.') && !data.includes(' ')) {
+      // LNURL - decode to Lightning Address
+      if (lowerData.startsWith('lnurl')) {
+        try {
+          // Decode bech32 LNURL
+          const decoded = bech32.decode(data, 2000)
+          const url = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(decoded.words)))
+          
+          // Extract Lightning Address from URL
+          // Format: https://domain.com/.well-known/lnurlp/username
+          if (url.includes('/.well-known/lnurlp/')) {
+            const urlObj = new URL(url)
+            const username = urlObj.pathname.split('/').pop()
+            const domain = urlObj.hostname
+            const lightningAddress = `${username}@${domain}`
+            return { type: 'lightning_address', data: lightningAddress, raw: data }
+          }
+        } catch (e) {
+          console.error('LNURL decode failed:', e)
+        }
+        // Fallback: pass LNURL as-is
         return { type: 'lightning_address', data, raw: data }
+      }
+      
+      // Lightning Address - plain format (user@domain.com)
+      if (data.includes('@') && data.includes('.') && !lowerData.startsWith('lnurl')) {
+        const trimmed = data.trim()
+        const parts = trimmed.split('@')
+        if (parts.length === 2 && parts[0].length > 0 && parts[1].includes('.')) {
+          return { type: 'lightning_address', data: trimmed, raw: data }
+        }
       }
       
       // Unknown/unsupported
