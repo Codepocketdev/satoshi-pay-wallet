@@ -366,6 +366,9 @@ export default function ReceiveLightning({
                   width: '100%',
                   maxWidth: '300px',
                   height: 'auto',
+                  padding: '1em',
+                  background: 'white',
+                  boxSizing: 'border-box',
                   borderRadius: '8px'
                 }}
               />

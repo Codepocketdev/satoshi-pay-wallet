@@ -650,9 +650,16 @@ function App() {
 
             <div style={{ textAlign: 'center', marginBottom: '1em' }}>
               <img 
-                src={lightningInvoiceQR} 
-                alt="Invoice QR" 
-                style={{ maxWidth: '300px', width: '100%', borderRadius: '8px' }} 
+                src={lightningInvoiceQR}
+                alt="Invoice QR"
+                style={{ 
+                  maxWidth: '300px', 
+                  width: '100%', 
+                  borderRadius: '8px',
+                  padding: '1em',
+                  background: 'white',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
 

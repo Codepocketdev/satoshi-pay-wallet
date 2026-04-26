@@ -60,14 +60,17 @@ export default function AnimatedQRCode({ data, size = 300 }) {
   return (
     <div style={{ textAlign: 'center' }}>
       {qrCodes[currentFrame] && (
-        <img 
-          src={qrCodes[currentFrame]} 
-          alt="QR Code" 
-          style={{ 
-            maxWidth: `${size}px`, 
-            width: '100%', 
-            borderRadius: '8px' 
-          }} 
+        <img
+          src={qrCodes[currentFrame]}
+          alt="QR Code"
+          style={{
+            maxWidth: `${size}px`,
+            width: '100%',
+            borderRadius: '8px',
+            padding: '1em',
+            background: 'white',
+            boxSizing: 'border-box'
+          }}
         />
       )}
       
