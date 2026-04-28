@@ -6,6 +6,7 @@ import './App.css'
 import { useWallet } from './hooks/useWallet.js'
 import { usePendingTokens } from './hooks/usePendingTokens.js'
 import { useMintQuoteProcessor } from './hooks/useMintQuoteProcessor.js'
+import { useNpubcash } from './hooks/useNpubcash.js'
 import { nwcStore } from './utils/nwcStore'
 import { migrateToDexie } from './utils/migrateToDexie.js'
 
@@ -165,6 +166,93 @@ function App() {
     }
   })
 
+  // BACKGROUND NPUB.CASH POLLING - Runs continuously!
+  const nsec = typeof window !== 'undefined' ? localStorage.getItem('nostr_nsec') : null
+  const npubcashEnabled = typeof window !== 'undefined' ? localStorage.getItem('npubcash_enabled') === 'true' : false
+
+  const npubcash = useNpubcash({
+    nsec: nsec || '',
+    enabled: npubcashEnabled && !!nsec && !!bip39Seed,
+    onTokenClaimed: async (token, amount) => {
+      try {
+        if (!bip39Seed) {
+          console.error('Cannot receive: wallet seed not initialized')
+          setError('Wallet not ready. Please reload the app.')
+          return
+        }
+        
+        // SAFE PATTERN (like cashu.me):
+        // 1. Add to history as PENDING first!
+        const txId = await addTransaction('receive', amount, 'Lightning Address (pending)', mintUrl, 'pending')
+        
+        // 2. Store token with transaction ID
+        localStorage.setItem(`pending_ln_token_${txId}`, token)
+        
+        console.log(`Saved pending LN token (${amount} sats) with txId: ${txId}`)
+        
+        // 3. Try to receive
+        await handleReceiveRestoredToken(token)
+        
+        // 4. Success! Update to completed and cleanup
+        await updateTransactionStatus(txId, 'completed')
+        localStorage.removeItem(`pending_ln_token_${txId}`)
+        
+        console.log(`✅ Completed LN receive (${amount} sats)`)
+        
+        setSuccess(`✅ Received ${amount} sats via Lightning Address!`)
+        setTimeout(() => setSuccess(''), 3000)
+      } catch (err) {
+        console.error('Failed to auto-receive:', err)
+        setError(`Failed to receive: ${err.message}`)
+        setTimeout(() => setError(''), 3000)
+        // Token stays in pending state - will be recovered on reload
+      }
+    }
+  })
+
+  // Recover pending LN tokens on app load
+  useEffect(() => {
+    if (!bip39Seed || !wallet) return
+
+    const recoverPendingLNTokens = async () => {
+      try {
+        // Find all pending LN tokens in localStorage
+        const pendingKeys = Object.keys(localStorage).filter(key => key.startsWith('pending_ln_token_'))
+        
+        if (pendingKeys.length > 0) {
+          console.log(`🔄 Found ${pendingKeys.length} pending LN tokens to recover...`)
+          
+          for (const key of pendingKeys) {
+            const txId = key.replace('pending_ln_token_', '')
+            const token = localStorage.getItem(key)
+            
+            if (token) {
+              try {
+                console.log(`🔄 Recovering pending token ${txId}...`)
+                await handleReceiveRestoredToken(token)
+                
+                // Success! Update transaction and cleanup
+                await updateTransactionStatus(txId, 'completed')
+                localStorage.removeItem(key)
+                
+                console.log(`✅ Recovered pending token ${txId}`)
+                setSuccess(`✅ Recovered pending Lightning payment!`)
+                setTimeout(() => setSuccess(''), 3000)
+              } catch (err) {
+                console.error(`Failed to recover token ${txId}:`, err)
+                // Leave as pending - user can see it in history
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error recovering pending tokens:', err)
+      }
+    }
+
+    recoverPendingLNTokens()
+  }, [bip39Seed, wallet])
+
   const [showSendPage, setShowSendPage] = useState(false)
   const [showReceivePage, setShowReceivePage] = useState(false)
   const [showHistoryPage, setShowHistoryPage] = useState(false)
@@ -235,7 +323,7 @@ function App() {
   useEffect(() => {
     if (wallet && masterKey) {
       const conn = nwcStore.getConnection()
-      
+
       if (conn?.enabled) {
         const walletFunctions = {
           getBalance: async () => totalBalance,
@@ -251,7 +339,7 @@ function App() {
             return mintQuote.request
           }
         }
-        
+
         nwcStore.startListening(walletFunctions)
         console.log('✅ NWC listening started')
       }
@@ -355,12 +443,12 @@ function App() {
       })
 
       setLightningInvoice(mintQuote.request)
-      setCurrentQuote(mintQuote)      
+      setCurrentQuote(mintQuote)
 
       const qr = await generateQR(mintQuote.request)
       setLightningInvoiceQR(qr)
       setShowInvoiceQRModal(true)
-      
+
       setSuccess('Invoice created! Checking for payment...')
       setTimeout(() => setSuccess(''), 2000)
     } catch (err) {
@@ -377,7 +465,7 @@ function App() {
       // Delete from database when user cancels
       await deleteMintQuote(currentQuote.quote)
     }
-    
+
     setLightningInvoice('')
     setLightningInvoiceQR('')
     setShowInvoiceQRModal(false)
@@ -511,6 +599,7 @@ function App() {
         onClose={() => { setShowReceivePage(false); setScannedData(null); calculateAllBalances() }}
         onScanRequest={(mode) => { setScanMode(mode); setShowScanner(true) }}
         totalBalance={totalBalance}
+        npubcash={npubcash}
         onNavigate={(page) => {
           setShowReceivePage(false)
           if (page === 'p2pk-settings') {
@@ -649,12 +738,12 @@ function App() {
             </h3>
 
             <div style={{ textAlign: 'center', marginBottom: '1em' }}>
-              <img 
+              <img
                 src={lightningInvoiceQR}
                 alt="Invoice QR"
-                style={{ 
-                  maxWidth: '300px', 
-                  width: '100%', 
+                style={{
+                  maxWidth: '300px',
+                  width: '100%',
                   borderRadius: '8px',
                   padding: '1em',
                   background: 'white',

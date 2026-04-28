@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getNpubcashBalance, claimNpubcashToken, getLightningAddress } from '../utils/npubcash.js'
 
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_INTERVAL = 5000 // 5 seconds (FASTER POLLING!)
 
 export function useNpubcash({
   nsec,
@@ -153,14 +153,14 @@ export function useNpubcash({
     }
   }, [nsec, enabled])
 
-  // Polling effect
+  // Polling effect - RUNS IN BACKGROUND!
   useEffect(() => {
     if (!enabled) return
 
     // Check immediately on mount
     checkAndClaim()
 
-    // Then poll every 30 seconds
+    // Then poll every 5 seconds (FAST!)
     const interval = setInterval(checkAndClaim, POLL_INTERVAL)
 
     return () => clearInterval(interval)
