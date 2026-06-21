@@ -2,21 +2,126 @@ import { useRef, useState, useEffect } from 'react'
 import QrScanner from 'qr-scanner'
 import { decode as decodeLNURL } from 'light-bolt11-decoder'
 import { bech32 } from '@scure/base'
+import { RefreshCw, X } from 'lucide-react'
 
 export default function QRScanner({ onScan, onClose, mode }) {
   const videoRef = useRef(null)
   const scannerRef = useRef(null)
+  const onScanRef = useRef(onScan)
+  const modeRef = useRef(mode)
   const [error, setError] = useState('')
   const [scanning, setScanning] = useState(false)
   const [cameras, setCameras] = useState([])
   const [facingMode, setFacingMode] = useState('environment')
 
+  // Keep refs current without retriggering the scanner mount effect
+  useEffect(() => { onScanRef.current = onScan }, [onScan])
+  useEffect(() => { modeRef.current = mode }, [mode])
+
   useEffect(() => {
     let isActive = true
 
+    const detectTokenType = (data) => {
+      const lowerData = data.toLowerCase()
+
+      // Lightning Invoice
+      if (lowerData.startsWith('lightning:') || lowerData.startsWith('lnbc')) {
+        const invoice = lowerData.startsWith('lightning:')
+          ? data.split(':')[1]
+          : data
+        return { type: 'lightning', data: invoice, raw: data }
+      }
+
+      // Cashu Token
+      if (lowerData.startsWith('cashu')) {
+        let token
+
+        if (lowerData.startsWith('cashu:')) {
+          token = data.split(':')[1]
+          if (token.startsWith('//')) {
+            token = token.slice(2)
+          }
+        } else {
+          token = data
+        }
+
+        if (token.toLowerCase().startsWith('creq')) {
+          return { type: 'cashu_request', data: token, raw: data }
+        }
+
+        return { type: 'cashu', data: token, raw: data }
+      }
+
+      // Cashu Request (without cashu: prefix)
+      if (lowerData.startsWith('creq')) {
+        return { type: 'cashu_request', data, raw: data }
+      }
+
+      // LNURL - decode to Lightning Address
+      if (lowerData.startsWith('lnurl')) {
+        try {
+          const decoded = bech32.decode(data, 2000)
+          const url = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(decoded.words)))
+
+          if (url.includes('/.well-known/lnurlp/')) {
+            const urlObj = new URL(url)
+            const username = urlObj.pathname.split('/').pop()
+            const domain = urlObj.hostname
+            const lightningAddress = `${username}@${domain}`
+            return { type: 'lightning_address', data: lightningAddress, raw: data }
+          }
+        } catch (e) {
+          console.error('LNURL decode failed:', e)
+        }
+        return { type: 'lightning_address', data, raw: data }
+      }
+
+      // Lightning Address - plain format (user@domain.com)
+      if (data.includes('@') && data.includes('.') && !lowerData.startsWith('lnurl')) {
+        const trimmed = data.trim()
+        const parts = trimmed.split('@')
+        if (parts.length === 2 && parts[0].length > 0 && parts[1].includes('.')) {
+          return { type: 'lightning_address', data: trimmed, raw: data }
+        }
+      }
+
+      return { type: 'unknown', data, raw: data }
+    }
+
+    const cleanup = () => {
+      isActive = false
+      if (scannerRef.current) {
+        scannerRef.current.stop()
+        scannerRef.current.destroy()
+        scannerRef.current = null
+      }
+    }
+
+    const handleScanSuccess = (result) => {
+      if (!isActive) return
+      if (!result || !result.data) return
+
+      const detectedToken = detectTokenType(result.data)
+      const currentMode = modeRef.current
+
+      if (currentMode === 'send') {
+        if (['lightning', 'cashu', 'lightning_address', 'cashu_request'].includes(detectedToken.type)) {
+          cleanup()
+          onScanRef.current(detectedToken.data || detectedToken.raw || '')
+        }
+      } else if (currentMode === 'receive') {
+        if (detectedToken.type === 'cashu') {
+          cleanup()
+          onScanRef.current(detectedToken.data || detectedToken.raw || '')
+        }
+      } else {
+        cleanup()
+        onScanRef.current(detectedToken.data || detectedToken.raw || '')
+      }
+    }
+
     const initScanner = async () => {
       try {
-        // Check if camera is available
         const hasCamera = await QrScanner.hasCamera()
         if (!hasCamera) {
           setError('No camera found on this device.')
@@ -25,7 +130,6 @@ export default function QRScanner({ onScan, onClose, mode }) {
 
         if (!videoRef.current || !isActive) return
 
-        // Create scanner instance
         scannerRef.current = new QrScanner(
           videoRef.current,
           (result) => handleScanSuccess(result),
@@ -36,18 +140,13 @@ export default function QRScanner({ onScan, onClose, mode }) {
           }
         )
 
-        // Start scanning
         await scannerRef.current.start()
+        if (!isActive) return
         setScanning(true)
 
-        // Get available cameras
         const cameraList = await QrScanner.listCameras(true)
+        if (!isActive) return
         setCameras(cameraList)
-
-        // Set initial camera if multiple available
-        if (cameraList.length > 1) {
-          await scannerRef.current.setCamera(facingMode)
-        }
 
       } catch (err) {
         console.error('Scanner error:', err)
@@ -65,125 +164,12 @@ export default function QRScanner({ onScan, onClose, mode }) {
       }
     }
 
-    const handleScanSuccess = (result) => {
-      if (!isActive) return
-
-      // Ensure we have valid data
-      if (!result || !result.data) return
-
-      const detectedToken = detectTokenType(result.data)
-      
-      // Only process relevant tokens based on mode
-      if (mode === 'send') {
-        // Accept lightning invoices, cashu tokens, lightning addresses
-        if (['lightning', 'cashu', 'lightning_address', 'cashu_request'].includes(detectedToken.type)) {
-          cleanup()
-          onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
-        }
-      } else if (mode === 'receive') {
-        // Only accept cashu tokens
-        if (detectedToken.type === 'cashu') {
-          cleanup()
-          onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
-        }
-      } else {
-        // Default: accept anything
-        cleanup()
-        onScan(detectedToken.data || detectedToken.raw || '') // Return just the cleaned data string
-      }
-    }
-
-    const detectTokenType = (data) => {
-      const lowerData = data.toLowerCase()
-
-      // Lightning Invoice
-      if (lowerData.startsWith('lightning:') || lowerData.startsWith('lnbc')) {
-        const invoice = lowerData.startsWith('lightning:') 
-          ? data.split(':')[1] 
-          : data
-        return { type: 'lightning', data: invoice, raw: data }
-      }
-      
-      // Cashu Token
-if (lowerData.startsWith('cashu')) {
-  let token
-  
-  if (lowerData.startsWith('cashu:')) {
-    // Format: cashu:token or cashu://token
-    token = data.split(':')[1]
-    if (token.startsWith('//')) {
-      token = token.slice(2)
-    }
-  } else {
-    // Format: cashuAtoken or cashuBtoken (no prefix, just the token)
-    // Don't remove any characters - return the full token!
-    token = data
-  }
-
-  // Check if it's a Cashu Request
-  if (token.toLowerCase().startsWith('creq')) {
-    return { type: 'cashu_request', data: token, raw: data }
-  }
-
-  return { type: 'cashu', data: token, raw: data }
-}
-      
-      // Cashu Request (without cashu: prefix)
-      if (lowerData.startsWith('creq')) {
-        return { type: 'cashu_request', data, raw: data }
-      }
-      
-      // LNURL - decode to Lightning Address
-      if (lowerData.startsWith('lnurl')) {
-        try {
-          // Decode bech32 LNURL
-          const decoded = bech32.decode(data, 2000)
-          const url = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(decoded.words)))
-          
-          // Extract Lightning Address from URL
-          // Format: https://domain.com/.well-known/lnurlp/username
-          if (url.includes('/.well-known/lnurlp/')) {
-            const urlObj = new URL(url)
-            const username = urlObj.pathname.split('/').pop()
-            const domain = urlObj.hostname
-            const lightningAddress = `${username}@${domain}`
-            return { type: 'lightning_address', data: lightningAddress, raw: data }
-          }
-        } catch (e) {
-          console.error('LNURL decode failed:', e)
-        }
-        // Fallback: pass LNURL as-is
-        return { type: 'lightning_address', data, raw: data }
-      }
-      
-      // Lightning Address - plain format (user@domain.com)
-      if (data.includes('@') && data.includes('.') && !lowerData.startsWith('lnurl')) {
-        const trimmed = data.trim()
-        const parts = trimmed.split('@')
-        if (parts.length === 2 && parts[0].length > 0 && parts[1].includes('.')) {
-          return { type: 'lightning_address', data: trimmed, raw: data }
-        }
-      }
-      
-      // Unknown/unsupported
-      return { type: 'unknown', data, raw: data }
-    }
-
-    const cleanup = () => {
-      isActive = false
-      if (scannerRef.current) {
-        scannerRef.current.stop()
-        scannerRef.current.destroy()
-        scannerRef.current = null
-      }
-    }
-
     initScanner()
 
     return () => {
       cleanup()
     }
-  }, [onScan, mode, facingMode])
+  }, []) // mount once — onScan/mode tracked via refs, prevents scanner restart loop
 
   const handleClose = () => {
     if (scannerRef.current) {
@@ -197,7 +183,7 @@ if (lowerData.startsWith('cashu')) {
     if (!scannerRef.current || cameras.length <= 1) return
 
     const newFacingMode = facingMode === 'environment' ? 'user' : 'environment'
-    
+
     try {
       await scannerRef.current.setCamera(newFacingMode)
       setFacingMode(newFacingMode)
@@ -237,7 +223,7 @@ if (lowerData.startsWith('cashu')) {
           color: 'white',
           lineHeight: '1.5'
         }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '0.5em' }}>⚠️ Error</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '0.5em' }}>Error</div>
           {error}
           <div style={{ marginTop: '1em', fontSize: '0.9em' }}>
             Try: Close other camera apps and reload the page
@@ -269,52 +255,54 @@ if (lowerData.startsWith('cashu')) {
 
         {scanning && !error && (
           <>
-            {/* Scan frame overlay */}
+            {/* Single scan frame — corners only, no separate border box to avoid doubling */}
             <div style={{
               position: 'absolute',
               width: '250px',
               height: '250px',
-              border: '3px solid #FFD700',
               borderRadius: '16px',
               boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
               pointerEvents: 'none'
             }}>
-              {/* Corner accents */}
               <div style={{
                 position: 'absolute',
-                top: '-3px',
-                left: '-3px',
+                top: '0',
+                left: '0',
                 width: '40px',
                 height: '40px',
                 borderTop: '5px solid #FFD700',
-                borderLeft: '5px solid #FFD700'
+                borderLeft: '5px solid #FFD700',
+                borderTopLeftRadius: '16px'
               }}/>
               <div style={{
                 position: 'absolute',
-                top: '-3px',
-                right: '-3px',
+                top: '0',
+                right: '0',
                 width: '40px',
                 height: '40px',
                 borderTop: '5px solid #FFD700',
-                borderRight: '5px solid #FFD700'
+                borderRight: '5px solid #FFD700',
+                borderTopRightRadius: '16px'
               }}/>
               <div style={{
                 position: 'absolute',
-                bottom: '-3px',
-                left: '-3px',
+                bottom: '0',
+                left: '0',
                 width: '40px',
                 height: '40px',
                 borderBottom: '5px solid #FFD700',
-                borderLeft: '5px solid #FFD700'
+                borderLeft: '5px solid #FFD700',
+                borderBottomLeftRadius: '16px'
               }}/>
               <div style={{
                 position: 'absolute',
-                bottom: '-3px',
-                right: '-3px',
+                bottom: '0',
+                right: '0',
                 width: '40px',
                 height: '40px',
                 borderBottom: '5px solid #FFD700',
-                borderRight: '5px solid #FFD700'
+                borderRight: '5px solid #FFD700',
+                borderBottomRightRadius: '16px'
               }}/>
               {/* Scanning line animation */}
               <div style={{
@@ -345,7 +333,6 @@ if (lowerData.startsWith('cashu')) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '24px',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                   transition: 'transform 0.2s',
                   zIndex: 10
@@ -354,7 +341,7 @@ if (lowerData.startsWith('cashu')) {
                 onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
-                🔄
+                <RefreshCw size={22} color="#000" />
               </button>
             )}
           </>
@@ -372,7 +359,10 @@ if (lowerData.startsWith('cashu')) {
             width: '100%',
             maxWidth: '300px',
             margin: '0 auto',
-            display: 'block',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5em',
             padding: '1em 2em',
             background: 'rgba(255, 255, 255, 0.15)',
             border: 'none',
@@ -386,6 +376,7 @@ if (lowerData.startsWith('cashu')) {
           onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
         >
+          <X size={18} />
           CLOSE
         </button>
       </div>
