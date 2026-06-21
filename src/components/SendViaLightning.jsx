@@ -552,7 +552,13 @@ export default function SendViaLightning({
               borderRadius: '8px',
               fontSize: '0.85em'
             }}>
-              <Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> Paying to: <strong>{decodedInvoice.lnAddress}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3em', marginBottom: '0.3em' }}>
+                <Mail size={16} />
+                <span>Paying to:</span>
+              </div>
+              <strong style={{ wordBreak: 'break-word', lineHeight: '1.4' }}>
+                {decodedInvoice.lnAddress}
+              </strong>
             </div>
           )}
 
