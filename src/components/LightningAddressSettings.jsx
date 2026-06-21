@@ -3,6 +3,16 @@ import { Copy, QrCode, Settings, X } from 'lucide-react'
 import { getLightningAddress } from '../utils/npubcash.js'
 import { generateQR } from '../utils/cashu.js'
 
+function LightningAddressDisplay({ address, style }) {
+  const [user, domain] = address.split('@')
+  return (
+    <div style={{ textAlign: 'center', lineHeight: '1.4', ...style }}>
+      <div style={{ wordBreak: 'break-word' }}>{user}@</div>
+      <div style={{ wordBreak: 'break-word' }}>{domain}</div>
+    </div>
+  )
+}
+
 export default function LightningAddressSettings({ onBack, setSuccess, setError }) {
   const [enabled, setEnabled] = useState(false)
   const [autoClaim, setAutoClaim] = useState(true)
@@ -11,10 +21,8 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
   const [showQR, setShowQR] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState('')
 
-  // Get nsec from localStorage
   const nsec = typeof window !== 'undefined' ? localStorage.getItem('nostr_nsec') : null
 
-  // Load settings on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isEnabled = localStorage.getItem('npubcash_enabled') === 'true'
@@ -22,7 +30,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
       setEnabled(isEnabled)
       setAutoClaim(isAutoClaim)
 
-      // Load Lightning Address if enabled
       if (isEnabled && nsec) {
         setLoading(true)
         getLightningAddress(nsec)
@@ -85,7 +92,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
     }
   }
 
-  // No Nostr keys configured
   if (!nsec) {
     return (
       <div>
@@ -95,7 +101,7 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         </h2>
 
         <div className="card">
-          <h3>⚠️ Nostr Keys Required</h3>
+          <h3>Nostr Keys Required</h3>
           <p style={{ opacity: 0.7, marginBottom: '1em' }}>
             Lightning Address requires Nostr keys. Please configure your Nostr keys first.
           </p>
@@ -111,7 +117,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         <Settings size={24} color="#FF8C00" /> Lightning Address Settings
       </h2>
 
-      {/* Enable/Disable Toggle */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1em' }}>
           <div>
@@ -147,7 +152,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         </div>
       </div>
 
-      {/* Status Card */}
       {enabled && (
         <div className="card" style={{
           background: 'rgba(76, 175, 80, 0.1)',
@@ -155,26 +159,25 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         }}>
           <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: '0.3em' }}>Status</div>
           <div style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#4CAF50' }}>
-            ✓ Lightning Address Enabled
+            Lightning Address Enabled
           </div>
         </div>
       )}
 
-      {/* Lightning Address Display */}
       {enabled && lightningAddress && (
         <div className="card">
           <h3>Your Lightning Address</h3>
-          <div style={{
-            background: 'rgba(255, 140, 0, 0.1)',
-            padding: '1em',
-            borderRadius: '8px',
-            border: '1px solid rgba(255, 140, 0, 0.3)',
-            wordBreak: 'break-all',
-            fontSize: '0.9em',
-            marginBottom: '0.5em'
-          }}>
-            {lightningAddress}
-          </div>
+          <LightningAddressDisplay
+            address={lightningAddress}
+            style={{
+              background: 'rgba(255, 140, 0, 0.1)',
+              padding: '1em',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 140, 0, 0.3)',
+              fontSize: '0.9em',
+              marginBottom: '0.5em'
+            }}
+          />
           <div style={{ display: 'flex', gap: '0.5em' }}>
             <button className="primary-btn" style={{ flex: 1 }} onClick={handleCopyAddress}>
               <Copy size={16} style={{ marginRight: '0.3em' }} />
@@ -188,7 +191,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         </div>
       )}
 
-      {/* Auto-Claim Toggle */}
       {enabled && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5em' }}>
@@ -226,21 +228,20 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         </div>
       )}
 
-      {/* Info Card */}
       <div className="card" style={{
         background: 'rgba(255, 140, 0, 0.05)',
         border: '1px solid rgba(255, 140, 0, 0.2)'
       }}>
-        <h3>💡 About Lightning Address</h3>
+        <h3>About Lightning Address</h3>
         <p style={{ fontSize: '0.85em', opacity: 0.8, lineHeight: '1.5' }}>
-          Lightning Address lets you receive Bitcoin payments via a simple email-like address. 
+          Lightning Address lets you receive Bitcoin payments via a simple email-like address.
           Your address is powered by npub.cash and works with any Lightning wallet.
         </p>
         <p style={{ fontSize: '0.85em', opacity: 0.8, lineHeight: '1.5', marginTop: '0.5em' }}>
           Want a custom username like <strong>yourname@npub.cash</strong>? Visit{' '}
-          <a 
-            href="https://npub.cash" 
-            target="_blank" 
+          <a
+            href="https://npub.cash"
+            target="_blank"
             rel="noopener noreferrer"
             style={{ color: '#FF8C00', textDecoration: 'underline' }}
           >
@@ -250,7 +251,6 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
         </p>
       </div>
 
-      {/* QR Code Modal */}
       {showQR && (
         <div
           style={{
@@ -312,19 +312,16 @@ export default function LightningAddressSettings({ onBack, setSuccess, setError 
               />
             </div>
 
-            <div
+            <LightningAddressDisplay
+              address={lightningAddress}
               style={{
                 background: 'rgba(255, 140, 0, 0.1)',
                 padding: '0.8em',
                 borderRadius: '8px',
-                wordBreak: 'break-all',
                 fontSize: '0.85em',
-                textAlign: 'center',
                 marginBottom: '1em'
               }}
-            >
-              {lightningAddress}
-            </div>
+            />
 
             <button
               className="primary-btn"
